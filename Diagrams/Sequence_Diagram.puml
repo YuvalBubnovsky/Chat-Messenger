@@ -1,0 +1,29 @@
+@startuml
+title Sequence Diagram
+
+actor User
+participant Client
+participant Server
+
+User -> Client : open Client
+
+note over Client, Server:Client actions
+
+Client -> Server: Connect/Disconnect
+Client -> Server : message to another client
+Client -> Server : message to all other clients
+Client -> Server : receive the names of all other clients
+Client -> Server : receive a list of all downloadable files
+Client -> Server : request to download a file
+Client -> Server : download a file
+
+note over Server, Client : Server actions
+Server ->Client : send a message
+Server ->Client : send a file over 'reliable UDP'
+Server ->Client : send a message over 'TCP'
+Server <-Server : Initialize
+Server <-Server : Allocate socket
+Server <-Server : Free socket
+
+User -> Client : close Client
+@enduml
