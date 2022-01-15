@@ -20,7 +20,7 @@ Client -> Server : download a file
 note over Server, Client : Server actions
 Server ->Client : send a message
 Server ->Client : send a file over 'reliable UDP'
-Server ->Client : send a message over 'TCP'
+Server ->Client : send a file over 'TCP'
 Server <-Server : Initialize
 Server <-Server : Allocate socket
 Server <-Server : Free socket
