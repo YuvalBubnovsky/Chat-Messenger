@@ -49,13 +49,17 @@ def Threader(connection: socket, addr, name):
             message = connection.recv(4096).decode()
 
             if message:
-                protocol = message[1]
-                content = message[0]
+                message = message.split('_', 1)
+                protocol = message[0]
+                content = message[1]
                 broadcast_msg = "<" + name + ">: " + str(content)
-                if protocol is all:
+
+                if protocol is "ALL":
                     print(broadcast_msg)
                     BroadcastToAll(broadcast_msg, connection)
-                else:
+                elif protocol is "FILE":
+                    pass
+                else:  # if it's a private/direct message
                     connect = find_by_name(protocol)
                     BroadcastToOne(broadcast_msg, connect)
 

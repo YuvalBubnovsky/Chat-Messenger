@@ -9,7 +9,6 @@ from threading import Thread
 import sys
 
 
-# We receive user input through the command line as CommandLineClient.py server-host server-port filename
 serverHost = "10.0.0.2"
 serverPort = 55000
 username = sys.argv[1]
@@ -25,7 +24,6 @@ def message_thread(client_socket):
     client_socket.send(message.encode())
 
 
-# Next step is to parse the arguments and create a TCP socket, we then attempt to connect to the designated server
 try:
     clientSocket = socket(AF_INET, SOCK_STREAM)
     print("Socket Created")
