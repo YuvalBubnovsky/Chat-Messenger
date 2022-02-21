@@ -54,10 +54,10 @@ def Threader(connection: socket, addr, name):
                 content = message[1]
                 broadcast_msg = "<" + name + ">: " + str(content)
 
-                if protocol is "ALL":
+                if protocol == "ALL":
                     print(broadcast_msg)
                     BroadcastToAll(broadcast_msg, connection)
-                elif protocol is "FILE":
+                elif protocol == "FILE":
                     pass
                 else:  # if it's a private/direct message
                     connect = find_by_name(protocol)

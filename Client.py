@@ -9,7 +9,7 @@ from threading import Thread
 import sys
 
 
-serverHost = "10.0.0.2"
+serverHost = "192.168.1.215"
 serverPort = 55000
 username = sys.argv[1]
 
@@ -24,6 +24,7 @@ def message_thread(client_socket):
     client_socket.send(message.encode())
 
 
+# TODO: Switch the loop structure so we don't create INF threads
 try:
     clientSocket = socket(AF_INET, SOCK_STREAM)
     print("Socket Created")
