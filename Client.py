@@ -7,15 +7,18 @@
 from socket import *
 from threading import Thread
 import sys
-import os
+import struct
 import time
+from Common import *
 
 serverHost = "192.168.1.215"
 serverPort = 55000
 udp_port = 55001
 username = sys.argv[1]
 MTU = 1500
-
+window_size = 10  # for selective repeat, this must match the same variable in Server.py
+timeout = 5  # seconds
+file_name = "temp"
 
 # ================================================================ #
 #                               UDP                                #
@@ -34,6 +37,7 @@ def request_file():
         File_Socket.sendto("SEND".encode(),(serverHost, udp_port))
         server_response = get_response(File_Socket)
         if server_response == "ACK":
+            pass
 
 
 def get_response(sock):
@@ -99,6 +103,7 @@ def verify_checksum(data):
 
 # TODO: Switch the loop structure so we don't create INF threads
 try:
+    #TODO: remove automatic connection and add a protocol to connect.
     clientSocket = socket(AF_INET, SOCK_STREAM)
     print("Socket Created")
     clientSocket.connect((serverHost, serverPort))
