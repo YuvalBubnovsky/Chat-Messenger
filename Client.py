@@ -17,7 +17,6 @@ serverPort = 55000
 udp_port = 55001
 username = sys.argv[1]
 MTU = 1500
-window_size = 1  # for selective repeat, this must match the same variable in Server.py
 timeout = 5  # seconds
 file_name = "temp"
 
@@ -42,9 +41,10 @@ def receive_transformed_message(sock: socket):
         temp, packet = unpack_transformed_packet(transformed_msg)
         seq_num = temp[0]
         checksum = temp[1]
-        return packet, address, seq_num, checksum
+        cwnd = temp[2]
+        return packet, address, seq_num, checksum, cwnd
     except OSError:
-        return "TIMEOUT", -1, -1, -1
+        return "TIMEOUT", -1, -1, -1, -1
 
 # ================================================================ #
 #                               UDP                                #
@@ -69,17 +69,20 @@ def UDP_Threader(filename) -> None:
     File_Socket.sendto("ACK".encode(), server_addr)  # also completes the three-way handshake
 
     packets_len = File_Socket.recv(4096).decode()
-    packet_list = [None] * int(packets_len)  # mirroring the list being sent from server - allows skipping re-ordering later
+    packet_list = [None] * int(packets_len)
+    # ^ mirroring the list being sent from server - allows skipping re-ordering later
     print("Preparing to receive %s packages" % packets_len)
 
     index = 0
     File_Socket.settimeout(timeout)
+    cwnd = 1
 
     while index != len(packet_list):
-        window_frame = min(index + window_size,
+        print("cwnd:", cwnd)
+        window_frame = min(index + cwnd,
                            len(packet_list))  # window_frame ensures were in the bounds of the list
         for i in range(index, window_frame):
-            packet, addr, seq_num, checksum = receive_transformed_message(File_Socket)
+            packet, addr, seq_num, checksum, cwnd = receive_transformed_message(File_Socket)
 
             if response == "TIMEOUT":
                 File_Socket.sendto(("NACK_" + str(i)).encode(), server_addr)

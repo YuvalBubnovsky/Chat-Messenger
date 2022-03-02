@@ -5,18 +5,19 @@ This is a class for potentially common methods between our server and client
 """
 
 
-# note on format, taken from https://docs.python.org/3/library/struct.html#struct-format-strings:
-# '!' -> network (i.e big endian)
-# 'L' -> unsigned long
-# 'H' -> unsigned short
+# Meanings in format, taken from https://docs.python.org/3/library/struct.html#struct-format-strings:
+# '!'  -->   network         - ( i.e big endian )
+# 'L'  -->   unsigned long   - ( 4 bytes )
+# 'H'  -->   unsigned short  - ( 2 bytes )
+# 'I   -->   unsigned int    - ( 4 bytes )
 
-def transform_packet(seq_num, checksum, packet):
-    return struct.pack('!LH', seq_num % ((1 << 16) - 1), int(checksum)) + packet
-    # seq_num binary modulo with 32,768 - 1
+def transform_packet(seq_num, checksum, packet, cwnd):
+    return struct.pack('!LHI', seq_num % ((1 << 16) - 1), int(checksum), int(cwnd)) + packet
+    # seq_num with a binary modulo of (32,768 - 1)
 
 
 def unpack_transformed_packet(packet):
-    return struct.unpack('!LH', packet[:6]), packet[6:]
+    return struct.unpack('!LHI', packet[:10]), packet[10:]
 
 
 def calc_checksum(packet):

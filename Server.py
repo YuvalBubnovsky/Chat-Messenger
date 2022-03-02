@@ -33,13 +33,9 @@ clients_socket.listen(15)  # we allow 15 connections max, so at worst we will ne
 def prepare_file(filename) -> list:
     packet_list = []
     location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    with open(os.path.join(location+"\\Files", filename), "rb") as file:
-        seq_num = 0
-        while packet := file.read(MTU - 6):
-            checksum = calc_checksum(packet)
-            packet = transform_packet(seq_num, checksum, packet)  # "cooking" the packet.
+    with open(os.path.join(location + "\\Files", filename), "rb") as file:
+        while packet := file.read(MTU - 10):
             packet_list.append(packet)
-            seq_num += 1
     return packet_list
 
 
@@ -62,7 +58,7 @@ def receive_message(sock: socket):
 #                               UDP                                #
 # ================================================================ #
 
-#TODO: send a complete TestImage.jpg - currently only one package go through
+# TODO: send a complete TestImage.jpg - currently only one package go through
 def file_sender(connection, client_addr, packet_list) -> None:
     connection.settimeout(timeout * 2)
     connection.sendto(str(len(packet_list)).encode(), client_addr)
@@ -71,16 +67,20 @@ def file_sender(connection, client_addr, packet_list) -> None:
     for i in range(0, len(packet_list)):
         ack_list.append(False)
     acked = 0
+    cwnd = 1
+    # threshold = 0
+    first_loss = False
 
     print("sending files!, last byte is:", bytearray(packet_list[-1])[-1])
 
     while index != len(packet_list):
-
         window_frame = min(index + window_size,
                            len(packet_list))  # window_frame ensures were in the bounds of the list
         for i in range(index, window_frame):
             if not ack_list[i]:
-                connection.sendto(packet_list[i], client_addr)
+                checksum = calc_checksum(packet_list[i])
+                packet = transform_packet(i, checksum, packet_list[i], cwnd)  # "cooking" the packet.
+                connection.sendto(packet, client_addr)
 
         buffer = []  # for lost packets!
 
@@ -88,25 +88,43 @@ def file_sender(connection, client_addr, packet_list) -> None:
 
         for i in range(index, window_frame):
             response, addr = receive_message(connection)
+            threshold = cwnd / 2
+
 
             # ******************************************************************** #
             # TODO: maybe redundant - consider doing this only if receiving a NACK, then going over
             # TODO: packages that were'nt ACK'ed nor NACK'ed
             if response == "TIMEOUT":
-                print(response)
-                buffer.append(packet_list[i])
+                if not first_loss:
+                    first_loss = True
+                    print("first loss event is a:", response)
+                cwnd = 1
+                # buffer.append(packet_list[i])
+
             elif response[0] == "NACK":
-                print(response)
+                if not first_loss:
+                    first_loss = True
+                    print("first loss event is a:", response)
+                cwnd -= 1
                 buffer.append(int(response[1]))
             # ******************************************************************** #
 
             if response[0] == "ACK":
                 acked += 1
+                if not first_loss:
+                    cwnd *= 2
+                else:
+                    if cwnd < threshold:
+                        cwnd *= 2
+                    else:
+                        cwnd += 1
+                if cwnd > 0.1*len(packet_list):
+                    cwnd = int(0.1*len(packet_list))
                 ack_list[int(response[1])] = True
 
             if acked == len(packet_list) / 2:
                 print("Halfway done!")
-                continue_req = struct.pack('LH', 0x0000, 0x00) + "CONTINUE?".encode()
+                continue_req = struct.pack('LH', 0x0000, 0x00, 0x0000) + "CONTINUE?".encode()
                 connection.sendto(continue_req, client_addr)
                 flag = False
                 while not flag:  # should wait for response, but put in a loop as an extra measure.
@@ -128,6 +146,7 @@ def file_sender(connection, client_addr, packet_list) -> None:
                     index += 1
                 else:
                     break
+    print("done!")
 
 
 def UDP_Threader(file_name) -> None:
@@ -216,20 +235,23 @@ def Threader(connection: socket, address, name):
             connection.close()
 
 
-while running:
-    try:
-        connection_socket, adr = clients_socket.accept()
-        username = connection_socket.recv(4096).decode()
-        client_list.append((connection_socket, username))
-        print(username + " Connection from " + str(adr))
-        client_thread = Thread(target=Threader, args=(connection_socket, adr, username))
-        client_thread.start()
-    except OSError:
-        print("Something went wrong before threading the request!, the run will now stop.\n")
-        # break
+# suggestion : put a thread here that listens to exit events
 
-clients_socket.close()
-sys.exit()
+try:
+    while running:
+        try:
+            connection_socket, adr = clients_socket.accept()
+            username = connection_socket.recv(4096).decode()
+            client_list.append((connection_socket, username))
+            print(username + " Connection from " + str(adr))
+            client_thread = Thread(target=Threader, args=(connection_socket, adr, username))
+            client_thread.start()
+        except OSError:
+            print("Something went wrong before threading the request!, the run will now stop.\n")
+            # break
+except IOError:  # TODO: consider as temorary?
+    clients_socket.close()
+    sys.exit()
 
 # TODO: change the 'running' var in accordane with inputs like 'CTRL-C' or an exit event or an EOFError!
 # TODO: suggestion - open a listener thread that will listen to this event/input
