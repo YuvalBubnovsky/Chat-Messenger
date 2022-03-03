@@ -94,7 +94,7 @@ class Client:
                         response = response.split('_', 1)
                         if response[0] == "CONTINUE?":
                             print("Halfway Done! Continue?")
-                            answer = "yes"
+                            answer = "yes" #TODO: implement this
                             if answer == "yes":
                                 print("yes")
                                 File_Socket.sendto("CONTINUE".encode(), server_addr)
