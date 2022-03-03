@@ -64,85 +64,103 @@ class Client:
             cwnd = temp[2]
             return packet, address, seq_num, checksum, cwnd
         except OSError:
-            return "TIMEOUT", -1, -1, -1, -1
+            return "TIMEOUT", -1, -1, -1, 10
 
         # ================================================================ #
         #                               UDP                                #
         # ================================================================ #
 
+    def file_receiver(self, connection, server_addr, packet_list, fname) -> None:
+        index = 0
+        connection.settimeout(timeout)
+        cwnd = 10
+
+        while index != len(packet_list):
+            print("cwnd:", cwnd)
+            window_frame = min(index + cwnd + 2,
+                               len(packet_list))  # window_frame ensures were in the bounds of the list
+            for i in range(index, window_frame):
+                packet, addr, seq_num, checksum, cwnd = self.receive_transformed_message(connection)
+
+                if packet == "TIMEOUT" or cwnd == -1:
+                    connection.sendto(("NACK_" + str(i)).encode(), server_addr)
+                else:
+                    try:
+                        rsp = packet.decode()
+                        rsp = rsp.split('_', 1)
+                        if rsp[0] == "CONTINUE?":  # should happen around the 50% point of file transfer.
+                            print("halfway done! continue?")
+                            # ********TODO: when gui rolls around get input ************** #
+                            # answer = input()
+                            answer = "yes"
+                            print("yes")  # CONTROL - TO BE REMOVED
+                            # ^^^^^^^^TODO: when gui rolls around get input ^^^^^^^^^^^^^^ #
+                            if answer == "yes":
+                                connection.sendto("CONTINUE".encode(), server_addr)
+                            else:
+                                print("Relaying STOP file download to server")
+                                connection.sendto("STOP".encode(), server_addr)
+                                return
+                        else:  # in this case the response is a modifed packet.
+                            if calc_checksum(packet) == checksum:
+                                packet_list[seq_num] = packet
+                                connection.sendto(("ACK_" + str(seq_num)).encode(), server_addr)
+                                index += 1
+                            else:
+                                print("Sending NACK!")
+                                connection.sendto(("NACK_" + str(seq_num)).encode(), server_addr)
+                    except UnicodeDecodeError:  # when not sending strings!
+                        if calc_checksum(packet) == checksum:
+                            packet_list[seq_num] = packet
+                            connection.sendto(("ACK_" + str(seq_num)).encode(), server_addr)
+                            index += 1
+                        else:
+                            print("Sending NACK!")
+                            connection.sendto(("NACK_" + str(seq_num)).encode(), server_addr)
+
+        connection.sendto("ACKALL".encode(), server_addr)
+        print("Received all the packets and now assembling them to a file!")
+
+        with open("downloaded_" + fname, "ab") as file:
+            for _ in packet_list:
+                if _ is not None:  # even after RDT some packets may be missing - this is a precaution.
+                    file.write(_)
+
+    def handshakes(self, sock, addr) -> bool:
+        try:
+            sock.sendto("HANDSHAKE_".encode(), addr)
+
+            res, addr = self.receive_message(sock)
+            if res[0] == "ACK":
+                print("Server Is Live!")
+            else:
+                print("No Server response - try again")
+                return False
+
+            sock.sendto("ACK".encode(), addr)  # also completes the three-way handshake
+        except OSError:
+            print("timed out")
+
+        return True
+
     def UDP_Threader(self, filename) -> None:
-        server_addr = (self.server_host, self.udp_port)
+        server_addr = (self.server_host,self.udp_port)
         File_Socket = socket(AF_INET, SOCK_DGRAM)
         File_Socket.settimeout(60)
         File_Socket.connect(server_addr)
 
-        File_Socket.sendto("HANDSHAKE_".encode(), server_addr)
-        response, addr = self.receive_message(File_Socket)
+        print("attempting to confirm connection with a three way handshake.")
 
-        if response[0] == "ACK":
-            print("Server Is Live!")
+        if self.handshakes(File_Socket, server_addr):
+            print("twh success")
+            packets_len = File_Socket.recv(4096).decode()
+            packet_list = [None] * int(packets_len)
+            # ^ mirroring the list being sent from server - allows skipping re-ordering later
+            print("Preparing to receive %s packages" % packets_len)
+
+            self.file_receiver(File_Socket, server_addr, packet_list, filename)
         else:
-            print("No Server Response - Try Again!")
-            return
-
-        File_Socket.sendto("ACK".encode(), server_addr)
-
-        packets_len = File_Socket.recv(4096).decode()
-        packet_list = [None] * int(packets_len)
-        print("Preparing to receive %s packages" % packets_len)
-
-        index = 0
-        File_Socket.settimeout(self.get_timeout())
-        self.set_cwnd(1)
-
-        while index != len(packet_list):
-            print("cwnd:", self.get_cwnd())
-            window_frame = min(index + self.get_cwnd(), len(packet_list))
-            for i in range(index, window_frame):
-                packet, addr, seq_num, checksum, cwnd = self.receive_transformed_message(File_Socket)
-                self.set_cwnd(cwnd)
-
-                if response == "TIMEOUT":
-                    File_Socket.sendto(("NACK_" + str(i)).encode(), server_addr)
-                else:
-                    try:
-                        response = packet.decode()
-                        response = response.split('_', 1)
-                        if response[0] == "CONTINUE?":
-                            print("Halfway Done! Continue?")
-                            answer = "yes" #TODO: implement this
-                            if answer == "yes":
-                                print("yes")
-                                File_Socket.sendto("CONTINUE".encode(), server_addr)
-                            else:
-                                print("Relaying STOP File Download To Server")
-                                File_Socket.sendto("STOP".encode(), server_addr)
-                                index = len(packet_list)
-                                continue
-                        else:
-                            if calc_checksum(packet) == checksum:
-                                packet_list[seq_num] = packet
-                                File_Socket.sendto(("ACK_" + str(seq_num)).encode(), server_addr)
-                                index += 1
-                            else:
-                                print("Sending NACK!")
-                                File_Socket.sendto(("NACK_" + str(seq_num)).encode(), server_addr)
-                    except UnicodeDecodeError:
-                        if calc_checksum(packet) == checksum:
-                            packet_list[seq_num] = packet
-                            File_Socket.sendto(("ACK_" + str(seq_num)).encode(), server_addr)
-                            index += 1
-                        else:
-                            print("Sending NACK!")
-                            File_Socket.sendto(("NACK_" + str(seq_num)).encode(), server_addr)
-
-        File_Socket.sendto("ACKALL".encode(), server_addr)
-        print("Received all the packets and now assembling them to a file!")
-
-        with open("downloaded_" + filename, "ab") as file:
-            for _ in packet_list:
-                file.write(_)
-
+            print("Could not complete three way handshake with the server! - try again")
         File_Socket.close()
 
         # ================================================================ #
