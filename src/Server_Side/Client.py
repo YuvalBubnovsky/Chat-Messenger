@@ -1,3 +1,5 @@
+import threading
+import time
 from socket import *
 from threading import Thread
 import sys
@@ -132,6 +134,7 @@ class Client:
         # ================================================================ #
 
     def response_thread(self, client_socket):
+        time.sleep(0.2)
         try:
             while self.running:
                 response = client_socket.recv(8192)
@@ -143,8 +146,7 @@ class Client:
                     sys.exit(0)
 
                 if response[0] == "FILE":
-                    t = Thread(target=self.UDP_Threader(response[1]))
-                    t.start()
+                    threading.Thread(target=self.UDP_Threader, args=(response[1],)).start()
                 else:
                     print(response)
         except OSError:
@@ -152,6 +154,7 @@ class Client:
             return
 
     def message_thread(self, client_socket):
+        time.sleep(0.2)
         try:
             while self.running:
                 message = input()
@@ -173,14 +176,13 @@ class Client:
             clientSocket.connect((self.server_host, self.server_port))
             print("Connected to: " + self.server_host + " on port: " + str(self.server_port))
             clientSocket.send(self.username.encode())
-            t1 = Thread(target=self.response_thread(clientSocket))
-            t2 = Thread(target=self.message_thread(clientSocket))
-            t1.start()
-            t2.start()
+            threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
+            threading.Thread(target=self.response_thread, args=(clientSocket,)).start()
         except IOError:
             print("An error has occurred, please try again\r\n Closing client connection")
             sys.exit(1)
 
+
 if __name__ == '__main__':
-    client = Client('127.0.0.1',55000,55001,"yuval",1500,5,True)
+    client = Client('127.0.0.1', 55000, 55001, "yuval", 1500, 5, True)
     Client.run(client)

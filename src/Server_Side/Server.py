@@ -51,7 +51,7 @@ def receive_message(sock: socket):
         msg = msg.split('_', 1)
         return msg, address
     except TimeoutError:
-        return "TIMEOUT"
+        return "TIMEOUT", -1
 
 
 # ================================================================ #
@@ -70,6 +70,7 @@ def file_sender(connection, client_addr, packet_list) -> None:
     cwnd = 1
     # threshold = 0
     first_loss = False
+    halfway_flag = True
 
     print("sending files!, last byte is:", bytearray(packet_list[-1])[-1])
 
@@ -121,14 +122,20 @@ def file_sender(connection, client_addr, packet_list) -> None:
                     cwnd = int(0.1 * len(packet_list))
                 ack_list[int(response[1])] = True
 
-            if acked == len(packet_list) / 2:
+            if acked == len(packet_list) / 2 or i >= 0.65 * len(packet_list) and halfway_flag:
+                halfway_flag = False
                 print("Halfway done!")
-                continue_req = struct.pack('LH', 0x0000, 0x00, 0x0000) + "CONTINUE?".encode()
+                # continue_req = struct.pack('LHI', 0x0000, 0x00, 0x0000) + "CONTINUE?".encode()
+                continue_req = transform_packet(0, 0, "CONTINUE?".encode(), 0)
                 connection.sendto(continue_req, client_addr)
                 flag = False
                 while not flag:  # should wait for response, but put in a loop as an extra measure.
-                    if connection.recv(4096).decode() == "CONTINUE":
+                    res = connection.recv(4096).decode()
+                    if res == "CONTINUE":
                         flag = True
+                    elif res == "STOP":
+                        print("User submitted STOP req - returning")
+                        return
 
             if response[0] == "ACKALL":
                 print("All packets were received!")
