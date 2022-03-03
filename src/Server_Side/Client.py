@@ -17,6 +17,10 @@ class Client:
         self.timeout = timeout
         self.running = running
         self.cwnd = 1
+        self.response = ""
+
+    def set_server_host(self, new_host):
+        self.server_host = new_host
 
     def set_timeout(self, new_timeout: int):
         self.timeout = new_timeout
@@ -29,6 +33,18 @@ class Client:
 
     def get_cwnd(self):
         return self.cwnd
+
+    def set_username(self, new_user: str):
+        self.username = new_user
+
+    def get_username(self):
+        return self.username
+
+    def set_response(self, new_response: str):
+        self.response = new_response
+
+    def get_response(self):
+        return self.response
 
     def receive_message(self, sock: socket):
         try:
@@ -137,18 +153,19 @@ class Client:
         time.sleep(0.2)
         try:
             while self.running:
-                response = client_socket.recv(8192)
-                response = response.decode()
-                response = response.split('_', 1)
+                res = client_socket.recv(8192)
+                res = res.decode()
+                res = res.split('_', 1)
 
-                if response == "TIMEOUT":
+                if res == "TIMEOUT":
                     print("Connection Timed Out")
                     sys.exit(0)
 
-                if response[0] == "FILE":
-                    threading.Thread(target=self.UDP_Threader, args=(response[1],)).start()
+                if res[0] == "FILE":
+                    threading.Thread(target=self.UDP_Threader, args=(res[1],)).start()
                 else:
-                    print(response)
+                    self.set_response(res)
+                    print(res)
         except OSError:
             print("No Longer Receiving Messages")
             return
@@ -159,7 +176,7 @@ class Client:
             while self.running:
                 message = input()
                 if message == "FILE":
-                    name = "TestFile.txt"
+                    name = "Heavy.jpg"
                     client_socket.send(("FILE_" + name).encode())
                 else:
                     client_socket.send(message.encode())
@@ -182,7 +199,6 @@ class Client:
             print("An error has occurred, please try again\r\n Closing client connection")
             sys.exit(1)
 
+    def stop(self):
+        pass
 
-if __name__ == '__main__':
-    client = Client('127.0.0.1', 55000, 55001, "yuval", 1500, 5, True)
-    Client.run(client)
