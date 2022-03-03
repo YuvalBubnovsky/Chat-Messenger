@@ -8,7 +8,9 @@ root.title("Client")
 root.geometry("640x320")
 root.resizable(width=False, height=False)
 
+
 # TODO: Switch all functions to lambda functions
+# TODO: Add a function to switch the listbox from usernames to files and back - optional
 
 ######################################
 #                                    #
@@ -38,19 +40,19 @@ def on_login():
 
     # Set username label
     username_label = Label(login_screen, text="Username  ")
-    username_label.place(relx=0.5,rely=0.2,anchor=CENTER)
+    username_label.place(relx=0.5, rely=0.2, anchor=CENTER)
 
     username_entry = Entry(login_screen, textvariable=username)
-    username_entry.place(relx=0.5,rely=0.3,anchor=CENTER)
+    username_entry.place(relx=0.5, rely=0.3, anchor=CENTER)
 
     address_label = Label(login_screen, text="Address  ")
-    address_label.place(relx=0.5,rely=0.4,anchor=CENTER)
+    address_label.place(relx=0.5, rely=0.4, anchor=CENTER)
 
     address_entry = Entry(login_screen, textvariable=user_address, show='*')
-    address_entry.place(relx=0.5,rely=0.5,anchor=CENTER)
+    address_entry.place(relx=0.5, rely=0.5, anchor=CENTER)
 
     Label(login_screen, text="").pack()
-    Button(login_screen, text="Connect", width=10, height=1).place(relx=0.5,rely=0.7,anchor=CENTER)
+    Button(login_screen, text="Connect", width=10, height=1).place(relx=0.5, rely=0.7, anchor=CENTER)
 
 
 def on_whois():
@@ -108,7 +110,7 @@ display_box.pack(side='left', padx=10)
 scrollbar.pack(side='left', fill='y')
 
 # TODO: populate list properly and bind double click functions
-user_list = Listbox(chat_frame, height=10)
+user_list = Listbox(chat_frame, height=10, selectmode=SINGLE)
 user_list.pack(side='right', padx=5)
 
 ######################################

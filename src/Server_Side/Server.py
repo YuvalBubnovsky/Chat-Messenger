@@ -90,7 +90,6 @@ def file_sender(connection, client_addr, packet_list) -> None:
             response, addr = receive_message(connection)
             threshold = cwnd / 2
 
-
             # ******************************************************************** #
             # TODO: maybe redundant - consider doing this only if receiving a NACK, then going over
             # TODO: packages that were'nt ACK'ed nor NACK'ed
@@ -118,8 +117,8 @@ def file_sender(connection, client_addr, packet_list) -> None:
                         cwnd *= 2
                     else:
                         cwnd += 1
-                if cwnd > 0.1*len(packet_list):
-                    cwnd = int(0.1*len(packet_list))
+                if cwnd > 0.1 * len(packet_list):
+                    cwnd = int(0.1 * len(packet_list))
                 ack_list[int(response[1])] = True
 
             if acked == len(packet_list) / 2:
@@ -204,6 +203,10 @@ def find_by_name(name):
         if client[1] == name:
             return client[0]
     return "NOT FOUND"
+
+
+def get_client_list():
+    return client_list
 
 
 def Threader(connection: socket, address, name):
