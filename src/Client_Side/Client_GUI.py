@@ -70,9 +70,6 @@ class Client_GUI:
     def on_whois(self):
         pass
 
-    def on_clear(self):
-        pass
-
     def on_showfile(self):
         pass
 
@@ -80,12 +77,10 @@ class Client_GUI:
         top_frame = Labelframe(self.root, text='Menu')
         top_frame.pack(padx=15)
 
-        # TODO: Add state for button to switch once the user logged in and back out
         login_button = Button(top_frame, text="Login", width=10,
                               command=lambda: self.on_login(login_button))
         login_button.pack(side='left', padx=5)
 
-        # TODO: Add state for button to activate only once user logged in, same for show files
         show_online_button = Button(top_frame, text="Who's Online", width=10, command=self.on_whois,
                                     state=DISABLED)
         show_online_button.pack(side='left', padx=5)
@@ -96,12 +91,12 @@ class Client_GUI:
         show_server_files_button.pack(side='left', padx=5)
         self.controller.set_files_button(show_server_files_button)
 
-        clear_button = Button(top_frame, text="Clear", width=10, command=lambda: self.controller.clear_text(), state=DISABLED)
+        clear_button = Button(top_frame, text="Clear", width=10, command= self.controller.clear_text,
+                              state=DISABLED)
         clear_button.pack(side='left', padx=5)
         self.controller.set_clear_button(clear_button)
 
     def build_mid_frame(self):
-        # TODO: How to print to this?
         chat_frame = Labelframe(self.root, text='Chat Box')
         chat_frame.pack(side='top', padx=15)
 
@@ -124,7 +119,7 @@ class Client_GUI:
 
         # TODO: add a bind for sending messages using return key
         chat_area.pack(side='top', pady=5)
-        send_button = Button(bottom_frame,text="Send", width=10, command=lambda: self.controller.send_message(),
+        send_button = Button(bottom_frame,text="Send", width=10, command=lambda : self.controller.send_message(),
                              state=DISABLED)
         #chat_area.bind('<Return>', send_button)
         send_button.pack(side='top')

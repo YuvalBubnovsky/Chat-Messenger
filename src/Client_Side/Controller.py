@@ -64,12 +64,19 @@ class Controller:
         self.chat_box.delete("1.0", "end")
         self.chat_box.config(state=DISABLED)
 
-    def write_message(self):
+    def write_chat(self):
         while True:
             if self.client.get_res_flag():
                 self.chat_box.config(state=NORMAL)
-                self.chat_box.insert('end', "\n" , self.client.get_response())
+                to_print = self.client.get_response()
+                self.chat_box.insert('end', "\n" + to_print)
                 self.client.set_res_flag(False)
+                self.chat_box.config(state=DISABLED)
+
+    def write_message(self, message: str):
+        self.chat_box.config(state=NORMAL)
+        self.chat_box.insert('end', message + "\n")
+        self.chat_box.config(state=DISABLED)
 
     def connect(self, user_entry: Entry, addr_entry: Entry, login: Toplevel):
         user_name = user_entry.get()
@@ -88,14 +95,12 @@ class Controller:
         login.withdraw()
         self.is_connected = True
         self.update_state()
-        self.chat_box.config(state=NORMAL)
-        self.chat_box.insert('end', "Connected To Server!")
-        self.chat_box.config(state=DISABLED)
-        threading.Thread(target=self.write_message, daemon=True).start()
+        self.write_message(user_name + " Has Joined The Chat Room!")
+        threading.Thread(target=self.write_chat, daemon=True).start()
 
     def send_message(self):
         message = self.user_input.get()
-        self.client.message_thread(self.client.get_TCP_Socket(), message)
+        self.client.send_message(self.client.get_TCP_Socket(), message)
         self.user_input.delete(0, END)
 
     def disconnect(self):

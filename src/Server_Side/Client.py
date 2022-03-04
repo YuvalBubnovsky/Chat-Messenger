@@ -1,7 +1,6 @@
 import threading
 import time
 from socket import *
-from threading import Thread
 import sys
 from Common import *
 
@@ -20,6 +19,7 @@ class Client:
         self.response = ""
         self.TCP_Socket = None
         self.res_flag = False
+        self.taken_flag = False
 
     def set_res_flag(self, new_flag: bool):
         self.res_flag = new_flag
@@ -59,6 +59,12 @@ class Client:
 
     def get_response(self):
         return self.response
+
+    def set_taken_flag(self, new_flag: bool):
+        self.taken_flag = new_flag
+
+    def get_taken_flag(self):
+        return self.taken_flag
 
     def receive_message(self, sock: socket):
         try:
@@ -193,20 +199,22 @@ class Client:
                     print("Connection Timed Out")
                     sys.exit(0)
 
+                if res[0] == "DCD":
+                    self.running = False
+                    print("Disconnected!")
+
                 if res[0] == "FILE":
                     threading.Thread(target=self.UDP_Threader, args=(res[1],)).start()
                 else:
-                    self.set_response(res[1])
+                    self.set_response(res[0])
                     self.set_res_flag(True)
-                    print(res)
+                   # print(res)
         except OSError:
             print("No Longer Receiving Messages")
             return
 
-    def message_thread(self, client_socket, message):
-        time.sleep(0.2)
+    def send_message(self, client_socket, message):
         try:
-            while self.running:
                 checker = message.split('_', 1)
                 if checker[0] == "DC":
                     self.running = False
@@ -225,8 +233,16 @@ class Client:
             clientSocket.connect((self.server_host, self.server_port))
             print("Connected to: " + self.server_host + " on port: " + str(self.server_port))
             clientSocket.send(self.username.encode())
-            #      threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
-            threading.Thread(target=self.response_thread, args=(clientSocket,)).start()
+            response = clientSocket.recv(8192)
+            response = response.decode()
+            response = response.split('_', 1)
+            self.set_taken_flag(False)
+            if response[0] == "TAKEN":
+                self.set_taken_flag(True)
+                print("username taken - try again!")
+            else:
+                 #      threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
+                threading.Thread(target=self.response_thread, args=(clientSocket,)).start()
         except IOError:
             print("An error has occurred, please try again\r\n Closing client connection")
             sys.exit(1)

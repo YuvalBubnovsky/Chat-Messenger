@@ -13,10 +13,9 @@ PING_PORT = 50000  # port that handles initial connection
 SERVER_PORT = 55000  # start of server ports as per description
 FILE_PORT = 55001
 MTU = 1500
-client_list = {}
+client_list = []
 window_size = 1  # for selective repeat, this must match the same variable in Client.py
 timeout = 10  # seconds
-connected = 0  # control for adding to dict
 
 running = True
 
@@ -38,8 +37,8 @@ def prepare_file(filename) -> list:
 
 
 def username_exists(name):
-    for key, value in client_list.items():
-        if value[1] == name:
+    for client in client_list:
+        if client[1] == name:
             return True
     return False
 
@@ -49,14 +48,14 @@ def display_connected():
     if len(client_list) == 0:
         print("No one :(")
     else:
-        for key, value in client_list.items():
-            print(value[1])
+        for client in client_list:
+            print(client[1])
 
 
 def dc_user(name):
-    for key, value in client_list.items():
-        if value[1] == name:
-            del client_list[key]
+    for client in client_list:
+        if client[1] == name:
+            client_list.remove(client)
             break
 
 
@@ -77,7 +76,6 @@ def receive_message(sock: socket):
 
 def file_sender(connection, client_addr, packet_list) -> None:
     connection.settimeout(timeout * 2)
-    connection.sendto(str(len(packet_list)).encode(), client_addr)
     index = 0
     ack_list = []
     for i in range(0, len(packet_list)):
@@ -199,7 +197,9 @@ def UDP_Threader(file_name) -> None:
     twh, addr = handshakes(connection)
     if twh:
         print("twh success!")
-        file_sender(connection, addr, prepare_file(file_name))  # This handles selective repeat protocol!
+        packets = prepare_file(file_name)
+        connection.sendto(str(len(packets)).encode(), addr)
+        # file_sender(connection, addr, packets)  # This handles selective repeat protocol!
     else:
         print("Could not complete the three way handshake :(")
 
@@ -214,27 +214,30 @@ def BroadcastToOne(message, connection):
         connection[0].send(message.encode())
     except IOError:
         connection[0].close()
-        for key, value in client_list.items():
-            if value[1] == connection[1]:
-                del client_list[key]
+        for client in client_list:
+            if client[1] == connection[1]:
+                client_list.remove(client)
                 break
 
 
 def BroadcastToAll(message, connection):
-    for key, value in client_list.items():
-        if value[0] != connection:
-            try:
-                value[0].send(message.encode())
-            except IOError:
-                value[0].close()
-                del client_list[key]
+    for client in client_list:
+        try:
+            client[0].send(message.encode())
+        except IOError:
+            client[0].close()
+            client_list.remove(client)
 
 
 def find_by_name(name):
-    for key, value in client_list.items():
-        if value[1] == name:
-            return value
+    for client in client_list:
+        if client[1] == name:
+            return client
     return "NOT FOUND"
+
+
+def tcp_file_sender(connection, content):
+    pass
 
 
 def Threader(connection: socket, address, name):
@@ -257,6 +260,9 @@ def Threader(connection: socket, address, name):
                     udp_thread.start()
                     time.sleep(0.2)  # giving thread space to start.
                     connection.sendto(("FILE_" + content).encode(), address)
+                elif protocol == "TCPFILE":
+                    tcp_file_sender(connection, content)
+
                 elif protocol == "DC":
                     dc_user(name)
                     print(name, "disconnected!")
@@ -285,8 +291,7 @@ try:
                 continue
             else:
                 connection_socket.send("CON_Connected".encode())
-                client_list[connected] = (connection_socket, username)
-                connected += 1
+                client_list.append((connection_socket, username))
                 # client_list.append((connection_socket, username))
                 print(username + " Connected!")
                 client_thread = Thread(target=Threader, args=(connection_socket, adr, username))
