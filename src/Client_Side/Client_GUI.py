@@ -13,7 +13,7 @@ class Client_GUI:
         self.root.title("Client")
         self.root.geometry("640x320")
         self.root.resizable(width=False, height=False)
-        self.controller = Controller.Controller(None, None, None, None, None, None)
+        self.controller = Controller.Controller(None, None, None, None, None, None, None)
         self.build_gui()
         self.root.mainloop()
 
@@ -120,10 +120,16 @@ class Client_GUI:
 
     def build_bottom_frame(self):
         bottom_frame = Labelframe(self.root, text='Enter Message')
-        chat_area = Entry(bottom_frame, width=100, state=DISABLED)
+        chat_area = Entry(bottom_frame, width=70, state=DISABLED)
 
         # TODO: add a bind for sending messages using return key
         chat_area.pack(side='top', pady=5)
+        send_button = Button(bottom_frame,text="Send", width=10, command=lambda: self.controller.send_message(),
+                             state=DISABLED)
+        #chat_area.bind('<Return>', send_button)
+        send_button.pack(side='top')
+        self.controller.set_send_button(send_button)
+
         self.controller.set_user_input(chat_area)
 
         bottom_frame.pack(side='top')

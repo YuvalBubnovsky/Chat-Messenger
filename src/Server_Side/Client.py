@@ -18,6 +18,20 @@ class Client:
         self.running = running
         self.cwnd = 1
         self.response = ""
+        self.TCP_Socket = None
+        self.res_flag = False
+
+    def set_res_flag(self, new_flag: bool):
+        self.res_flag = new_flag
+
+    def get_res_flag(self):
+        return self.res_flag
+
+    def set_TCP_Socket(self, sock):
+        self.TCP_Socket = sock
+
+    def get_TCP_Socket(self):
+        return self.TCP_Socket
 
     def set_server_host(self, new_host):
         self.server_host = new_host
@@ -144,7 +158,7 @@ class Client:
         return True
 
     def UDP_Threader(self, filename) -> None:
-        server_addr = (self.server_host,self.udp_port)
+        server_addr = (self.server_host, self.udp_port)
         File_Socket = socket(AF_INET, SOCK_DGRAM)
         File_Socket.settimeout(60)
         File_Socket.connect(server_addr)
@@ -182,36 +196,36 @@ class Client:
                 if res[0] == "FILE":
                     threading.Thread(target=self.UDP_Threader, args=(res[1],)).start()
                 else:
-                    self.set_response(res)
+                    self.set_response(res[1])
+                    self.set_res_flag(True)
                     print(res)
         except OSError:
             print("No Longer Receiving Messages")
             return
 
-    def message_thread(self, client_socket):
+    def message_thread(self, client_socket, message):
         time.sleep(0.2)
         try:
             while self.running:
-                message = input()
-                if message == "FILE":
-                    name = "Heavy.jpg"
-                    client_socket.send(("FILE_" + name).encode())
-                else:
-                    client_socket.send(message.encode())
+                checker = message.split('_', 1)
+                if checker[0] == "DC":
+                    self.running = False
+
+                # sending message regardless - protocol assurance should be done by controller!
+                client_socket.send(message.encode())
         except OSError:
-            print("No Longer Sending Messages")
+            print("Something Went Wrong With Sending The Message")
             return
-        finally:
-            client_socket.close()
 
     def run(self):
         try:
             clientSocket = socket(AF_INET, SOCK_STREAM)
+            self.set_TCP_Socket(clientSocket)
             print("Socket Created")
             clientSocket.connect((self.server_host, self.server_port))
             print("Connected to: " + self.server_host + " on port: " + str(self.server_port))
             clientSocket.send(self.username.encode())
-            threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
+            #      threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
             threading.Thread(target=self.response_thread, args=(clientSocket,)).start()
         except IOError:
             print("An error has occurred, please try again\r\n Closing client connection")
@@ -219,4 +233,3 @@ class Client:
 
     def stop(self):
         pass
-

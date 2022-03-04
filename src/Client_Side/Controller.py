@@ -7,7 +7,7 @@ from Server_Side import Client
 
 class Controller:
 
-    def __init__(self, chat_box, user_input, online_button, files_button, clear_button, user_list):
+    def __init__(self, chat_box, user_input, online_button, files_button, clear_button, user_list, send_button):
         self.client = Client.Client('127.0.0.1', 55000, 55001, " ", 1500, 5, True)
         # TODO: Is server needed?
         self.chat_box = chat_box
@@ -15,6 +15,7 @@ class Controller:
         self.online_button = online_button
         self.files_button = files_button
         self.clear_button = clear_button
+        self.send_button = send_button
         self.user_list = user_list
         self.is_connected = False
 
@@ -33,11 +34,18 @@ class Controller:
     def set_clear_button(self, new_button: Button):
         self.clear_button = new_button
 
+    def set_send_button(self, new_button: Button):
+        self.send_button = new_button
+
+    def get_send_button(self):
+        return self.send_button
+
     def set_user_list(self, new_list: Listbox):
         self.user_list = new_list
 
     def update_state(self):
-        for widget in [self.user_input, self.online_button, self.files_button, self.clear_button, self.user_list]:
+        for widget in [self.user_input, self.online_button, self.files_button, self.clear_button, self.user_list,
+                       self.send_button]:
             if self.is_connected:
                 widget.config(state=NORMAL)
             else:
@@ -47,7 +55,7 @@ class Controller:
         self.chat_box.config(state=NORMAL)
         self.user_list.config(state=NORMAL)
         self.chat_box.delete("1.0", "end")
-        self.user_list.delete(0,END)
+        self.user_list.delete(0, END)
         self.user_list.config(state=DISABLED)
         self.chat_box.config(state=DISABLED)
 
@@ -55,6 +63,13 @@ class Controller:
         self.chat_box.config(state=NORMAL)
         self.chat_box.delete("1.0", "end")
         self.chat_box.config(state=DISABLED)
+
+    def write_message(self):
+        while True:
+            if self.client.get_res_flag():
+                self.chat_box.config(state=NORMAL)
+                self.chat_box.insert('end', "\n" , self.client.get_response())
+                self.client.set_res_flag(False)
 
     def connect(self, user_entry: Entry, addr_entry: Entry, login: Toplevel):
         user_name = user_entry.get()
@@ -76,6 +91,12 @@ class Controller:
         self.chat_box.config(state=NORMAL)
         self.chat_box.insert('end', "Connected To Server!")
         self.chat_box.config(state=DISABLED)
+        threading.Thread(target=self.write_message, daemon=True).start()
+
+    def send_message(self):
+        message = self.user_input.get()
+        self.client.message_thread(self.client.get_TCP_Socket(), message)
+        self.user_input.delete(0, END)
 
     def disconnect(self):
         self.update_state()
