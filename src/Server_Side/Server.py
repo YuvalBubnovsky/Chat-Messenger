@@ -43,6 +43,26 @@ def username_exists(name):
     return False
 
 
+def user_list() -> list:
+    lst = []
+    for client in client_list:
+        lst.append(client[1])
+    return lst
+
+
+def file_list() -> list:
+    location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    location = os.path.join(location, "Files")
+    location = os.fsencode(location)
+    names_lst = []
+    for file in os.listdir(location):
+        filename = os.fsdecode(file)
+        names_lst.append(filename)
+        # print(filename, ": ", file)
+    print(names_lst)
+    return names_lst
+
+
 def display_connected():
     print("those connected are:")
     if len(client_list) == 0:

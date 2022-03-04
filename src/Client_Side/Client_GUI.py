@@ -18,7 +18,6 @@ class Client_GUI:
         self.root.mainloop()
 
     # TODO: connect all functions to controller
-    # TODO: Button State Switch
 
     def build_gui(self):
         self.build_top_frame()
@@ -86,12 +85,12 @@ class Client_GUI:
         show_online_button.pack(side='left', padx=5)
         self.controller.set_online_button(show_online_button)
 
-        show_server_files_button = Button(top_frame, text="Show Files", width=10, command=self.on_showfile,
-                                          state=DISABLED)
+        show_server_files_button = Button(top_frame, text="Show Files", width=10, #TODO: switch this command
+                                          command=self.on_showfile, state=DISABLED)
         show_server_files_button.pack(side='left', padx=5)
         self.controller.set_files_button(show_server_files_button)
 
-        clear_button = Button(top_frame, text="Clear", width=10, command= self.controller.clear_text,
+        clear_button = Button(top_frame, text="Clear", width=10, command=self.controller.clear_text,
                               state=DISABLED)
         clear_button.pack(side='left', padx=5)
         self.controller.set_clear_button(clear_button)
@@ -115,14 +114,14 @@ class Client_GUI:
 
     def build_bottom_frame(self):
         bottom_frame = Labelframe(self.root, text='Enter Message')
-        chat_area = Entry(bottom_frame, width=70, state=DISABLED)
+        chat_area = Entry(bottom_frame, width=84, state=DISABLED)
 
         # TODO: add a bind for sending messages using return key
-        chat_area.pack(side='top', pady=5)
-        send_button = Button(bottom_frame,text="Send", width=10, command=lambda : self.controller.send_message(),
+        chat_area.pack(side='left', pady=5)
+        send_button = Button(bottom_frame, text="Send", width=10, command=lambda: self.controller.send_message(),
                              state=DISABLED)
-        #chat_area.bind('<Return>', send_button)
-        send_button.pack(side='top')
+        chat_area.bind('<Return>', lambda event: self.controller.send_message())
+        send_button.pack(side='right', anchor='e',padx=10)
         self.controller.set_send_button(send_button)
 
         self.controller.set_user_input(chat_area)

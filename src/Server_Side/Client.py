@@ -208,19 +208,19 @@ class Client:
                 else:
                     self.set_response(res[0])
                     self.set_res_flag(True)
-                   # print(res)
+                # print(res)
         except OSError:
             print("No Longer Receiving Messages")
             return
 
     def send_message(self, client_socket, message):
         try:
-                checker = message.split('_', 1)
-                if checker[0] == "DC":
-                    self.running = False
+            checker = message.split('_', 1)
+            if checker[0] == "DC":
+                self.running = False
 
-                # sending message regardless - protocol assurance should be done by controller!
-                client_socket.send(message.encode())
+            # sending message regardless - protocol assurance should be done by controller!
+            client_socket.send(message.encode())
         except OSError:
             print("Something Went Wrong With Sending The Message")
             return
@@ -241,7 +241,7 @@ class Client:
                 self.set_taken_flag(True)
                 print("username taken - try again!")
             else:
-                 #      threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
+                #      threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
                 threading.Thread(target=self.response_thread, args=(clientSocket,)).start()
         except IOError:
             print("An error has occurred, please try again\r\n Closing client connection")

@@ -1,3 +1,4 @@
+import os
 import threading
 from tkinter import *
 from tkinter import messagebox
@@ -107,3 +108,24 @@ class Controller:
         self.update_state()
         self.clear_all()
         pass  # TODO: Implement this with the state button of login/logout
+
+    def file_list(self) -> list:
+        location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        location = os.path.join(location, "Files")
+        location = os.fsencode(location)
+        names_lst = []
+        for file in os.listdir(location):
+            filename = os.fsdecode(file)
+            names_lst.append(filename)
+            # print(filename, ": ", file)
+        return names_lst
+
+    #TODO: test the function below with proper enligh PC
+'''
+    def show_server_files(self):
+        files = self.file_list()
+        self.write_message("========= SERVER FILES =========\n")
+        for file in files:
+            self.write_message(file)
+        self.write_message("================================")
+'''
