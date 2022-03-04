@@ -298,7 +298,6 @@ def Threader(connection: socket, address, name):
             connection.close()
 
 
-# suggestion : put a thread here that listens to exit events
 
 # main loop:
 try:
@@ -323,5 +322,3 @@ except IOError:
     clients_socket.close()
     sys.exit()
 
-# TODO: change the 'running' var in accordane with inputs like 'CTRL-C' or an exit event or an EOFError!
-# TODO: suggestion - open a listener thread that will listen to this event/input

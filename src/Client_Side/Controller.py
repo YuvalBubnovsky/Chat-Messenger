@@ -8,9 +8,10 @@ from Server_Side import Client
 
 class Controller:
 
-    def __init__(self, chat_box, user_input, online_button, files_button, clear_button, user_list, send_button):
+    def __init__(self, root, chat_box, user_input, online_button, files_button, clear_button, user_list, send_button):
         self.client = Client.Client('127.0.0.1', 55000, 55001, " ", 1500, 5, True)
         # TODO: Is server needed?
+        self.root = root
         self.chat_box = chat_box
         self.user_input = user_input
         self.online_button = online_button
@@ -18,7 +19,11 @@ class Controller:
         self.clear_button = clear_button
         self.send_button = send_button
         self.user_list = user_list
+        self.username = ""
         self.is_connected = False
+
+    def set_root(self, new_root: Tk):
+        self.root = new_root
 
     def set_chat_box(self, new_box: Text):
         self.chat_box = new_box
@@ -43,6 +48,18 @@ class Controller:
 
     def set_user_list(self, new_list: Listbox):
         self.user_list = new_list
+
+    def set_connected(self, new_status: bool):
+        self.is_connected = new_status
+
+    def get_connected(self):
+        return self.is_connected
+
+    def set_username(self, new_name: str):
+        self.username = new_name
+
+    def get_username(self):
+        return self.username
 
     def update_state(self):
         for widget in [self.user_input, self.online_button, self.files_button, self.clear_button, self.user_list,
@@ -70,7 +87,7 @@ class Controller:
             if self.client.get_res_flag():
                 self.chat_box.config(state=NORMAL)
                 to_print = self.client.get_response()
-                self.chat_box.insert('end', "\n" + to_print)
+                self.chat_box.insert('end',to_print+"\n")
                 self.client.set_res_flag(False)
                 self.chat_box.config(state=DISABLED)
 
@@ -94,9 +111,10 @@ class Controller:
         addr_entry.delete(0, END)
         addr_entry.insert(0, " ")
         login.withdraw()
-        self.is_connected = True
+        self.set_connected(True)
         self.update_state()
-        self.write_message(user_name + " Has Joined The Chat Room!")
+        self.client.send_message(self.client.get_TCP_Socket(), "ALL_" + user_name + " Has Joined The Chat Room!")
+        self.set_username(user_name)
         threading.Thread(target=self.write_chat, daemon=True).start()
 
     def send_message(self):
@@ -105,9 +123,11 @@ class Controller:
         self.user_input.delete(0, END)
 
     def disconnect(self):
+        self.set_connected(False)
         self.update_state()
+        self.client.send_message(self.client.get_TCP_Socket(), "ALL_" + self.get_username() + " Has Disconnected!")
         self.clear_all()
-        pass  # TODO: Implement this with the state button of login/logout
+        self.client.send_message(self.client.get_TCP_Socket(), "DC_disconnect")
 
     def file_list(self) -> list:
         location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -120,7 +140,9 @@ class Controller:
             # print(filename, ": ", file)
         return names_lst
 
-    #TODO: test the function below with proper enligh PC
+    # TODO: test the function below with proper enligh PC
+
+
 '''
     def show_server_files(self):
         files = self.file_list()

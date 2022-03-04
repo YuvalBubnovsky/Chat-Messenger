@@ -13,11 +13,11 @@ class Client_GUI:
         self.root.title("Client")
         self.root.geometry("640x320")
         self.root.resizable(width=False, height=False)
-        self.controller = Controller.Controller(None, None, None, None, None, None, None)
+        self.controller = Controller.Controller(None, None, None, None, None, None, None, None)
         self.build_gui()
+        self.controller.set_root(self.root)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.mainloop()
-
-    # TODO: connect all functions to controller
 
     def build_gui(self):
         self.build_top_frame()
@@ -28,11 +28,9 @@ class Client_GUI:
     # TODO: add shutdown
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            self.controller.disconnect()
+            if self.controller.get_connected():
+                self.controller.disconnect()
             self.root.destroy()
-
-    # def clear_text(self):  # For clearing user text-box after input
-    #   self.delete(1.0, 'end')
 
     def on_login(self, button: Button):
         if button.cget('text') == "Login":
@@ -85,7 +83,7 @@ class Client_GUI:
         show_online_button.pack(side='left', padx=5)
         self.controller.set_online_button(show_online_button)
 
-        show_server_files_button = Button(top_frame, text="Show Files", width=10, #TODO: switch this command
+        show_server_files_button = Button(top_frame, text="Show Files", width=10,  # TODO: switch this command
                                           command=self.on_showfile, state=DISABLED)
         show_server_files_button.pack(side='left', padx=5)
         self.controller.set_files_button(show_server_files_button)
@@ -121,15 +119,12 @@ class Client_GUI:
         send_button = Button(bottom_frame, text="Send", width=10, command=lambda: self.controller.send_message(),
                              state=DISABLED)
         chat_area.bind('<Return>', lambda event: self.controller.send_message())
-        send_button.pack(side='right', anchor='e',padx=10)
+        send_button.pack(side='right', anchor='e', padx=10)
         self.controller.set_send_button(send_button)
 
         self.controller.set_user_input(chat_area)
 
         bottom_frame.pack(side='top')
-
-        # TODO: add server shutdown functions to teardown for graceful exit
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
 
 if __name__ == '__main__':

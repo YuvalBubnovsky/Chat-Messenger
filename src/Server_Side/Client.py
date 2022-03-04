@@ -110,11 +110,8 @@ class Client:
                         rsp = rsp.split('_', 1)
                         if rsp[0] == "CONTINUE?":  # should happen around the 50% point of file transfer.
                             print("halfway done! continue?")
-                            # ********TODO: when gui rolls around get input ************** #
-                            # answer = input()
                             answer = "yes"
                             print("yes")  # CONTROL - TO BE REMOVED
-                            # ^^^^^^^^TODO: when gui rolls around get input ^^^^^^^^^^^^^^ #
                             if answer == "yes":
                                 connection.sendto("CONTINUE".encode(), server_addr)
                             else:
@@ -241,7 +238,6 @@ class Client:
                 self.set_taken_flag(True)
                 print("username taken - try again!")
             else:
-                #      threading.Thread(target=self.message_thread, args=(clientSocket,)).start()
                 threading.Thread(target=self.response_thread, args=(clientSocket,)).start()
         except IOError:
             print("An error has occurred, please try again\r\n Closing client connection")
