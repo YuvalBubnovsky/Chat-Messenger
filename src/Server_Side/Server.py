@@ -1,4 +1,6 @@
 import os
+import pickle  # Allows
+import socket
 import sys
 import time
 from socket import *
@@ -12,10 +14,12 @@ from Common import *
 PING_PORT = 50000  # port that handles initial connection
 SERVER_PORT = 55000  # start of server ports as per description
 FILE_PORT = 55001
+TCP_PORT = 60000
 MTU = 1500
 client_list = []
 window_size = 1  # for selective repeat, this must match the same variable in Client.py
 timeout = 10  # seconds
+control = 0  # used for cycling through ports
 
 running = True
 
@@ -29,24 +33,20 @@ print("Ready to serve on port ", SERVER_PORT)
 
 def prepare_file(filename) -> list:
     packet_list = []
+    print(__file__)
     location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-    with open(os.path.join(location + "\\Files", filename), "rb") as file:
+    location = os.path.join(location, "Files")
+    with open(os.path.join(location, filename), "rb") as file:
         while packet := file.read(MTU - 10):
             packet_list.append(packet)
     return packet_list
-
-
-def username_exists(name):
-    for client in client_list:
-        if client[1] == name:
-            return True
-    return False
 
 
 def user_list() -> list:
     lst = []
     for client in client_list:
         lst.append(client[1])
+    lst.append("USERS")
     return lst
 
 
@@ -58,9 +58,16 @@ def file_list() -> list:
     for file in os.listdir(location):
         filename = os.fsdecode(file)
         names_lst.append(filename)
-        # print(filename, ": ", file)
-    print(names_lst)
+
+    names_lst.append("FILES")
     return names_lst
+
+
+def username_exists(name):
+    for client in client_list:
+        if client[1] == name:
+            return True
+    return False
 
 
 def display_connected():
@@ -113,6 +120,23 @@ def file_sender(connection, client_addr, packet_list) -> None:
         window_frame = min(index + cwnd,
                            len(packet_list))  # window_frame ensures were in the bounds of the list
         for i in range(index, window_frame):
+            if halfway_flag:
+                if acked == len(packet_list) / 2:
+                    i = i + 1
+                    halfway_flag = False
+                    print("Halfway done!")
+                    continue_req = transform_packet(0, 0, "CONTINUE?".encode(), 0)
+                    connection.sendto(continue_req, client_addr)
+                    try:
+                        res = connection.recv(4096).decode()
+                        if res == "CONTINUE":
+                            print("Continuing!")
+                        elif res == "STOP":
+                            print("User submitted STOP req - returning")
+                            return
+                    except IOError:
+                        print("client timed out during continue request - stopping!")
+                        return
             if not ack_list[i]:
                 checksum = calc_checksum(packet_list[i])
                 packet = transform_packet(i, checksum, packet_list[i], cwnd)  # "cooking" the packet.
@@ -121,24 +145,24 @@ def file_sender(connection, client_addr, packet_list) -> None:
         checker = index
 
         for i in range(index, window_frame):
-            response, addr = receive_message(connection)
-            threshold = cwnd / 2
+            res, addr = receive_message(connection)
+            threshold = cwnd/2
 
-            if response == "TIMEOUT":
+            if res == "TIMEOUT" or res[0] == "TIMEOUT":
                 if not first_loss:
                     first_loss = True
-                    print("first loss event is a:", response)
+                    print("first loss event is a:", res)
                 cwnd = 10
-            elif response[0] == "NACK":
+            elif res[0] == "NACK":
                 if not first_loss:
                     first_loss = True
-                    print("first loss event is a:", response)
-                if cwnd > 15:
+                    print("first loss event is a:", res)
+                if cwnd > 10:
                     cwnd -= 1
             # explaining this segment - we know which packets to re-send based on whether they were ACK'ed or not
             # therefore, our only use for NACK's or Timeouts is CC.
 
-            if response[0] == "ACK":
+            if res[0] == "ACK":
                 acked += 1
                 if not first_loss:
                     cwnd *= 2
@@ -149,23 +173,9 @@ def file_sender(connection, client_addr, packet_list) -> None:
                         cwnd += 1
                 if cwnd > 0.1 * len(packet_list):  # making sure window isn't bloating!
                     cwnd = int(0.1 * len(packet_list))
-                ack_list[int(response[1])] = True
+                ack_list[int(res[1])] = True
 
-            if acked == len(packet_list) / 2 or i >= 0.65 * len(packet_list) and halfway_flag:
-                halfway_flag = False
-                print("Halfway done!")
-                continue_req = transform_packet(0, 0, "CONTINUE?".encode(), 0)
-                connection.sendto(continue_req, client_addr)
-                flag = False
-                while not flag:  # should wait for response, but put in a loop as an extra measure.
-                    res = connection.recv(4096).decode()
-                    if res == "CONTINUE":
-                        flag = True
-                    elif res == "STOP":
-                        print("User submitted STOP req - returning")
-                        return
-
-            if response[0] == "ACKALL":
+            if res[0] == "ACKALL":
                 print("All packets were received!")
                 index = len(packet_list)  # essentially breaking.
                 continue
@@ -183,22 +193,57 @@ def file_sender(connection, client_addr, packet_list) -> None:
     print("done!")
 
 
-def handshakes(connection):
-    msg, addr = receive_message(connection)
+def handshakes(connection) -> (bool, any):  # expecting True,socket on success or False, -1 on error
+    step1 = False
+    msg = ""
+    addr = ""
+    for _ in range(0, 5):
+        try:
+            temp1, temp2 = receive_message(connection)
+            if temp1 == "TIMEOUT":
+                continue
+            if not step1:
+                msg = temp1
+                addr = temp2
+                step1 = True
+        except IOError:
+            continue
+    if msg == "" or addr == "":
+        print("packet lose 2 stronk")
+        return False
+
     if msg[0] == "HANDSHAKE":
 
-        connection.sendto("ACK".encode(), addr)
+        for _ in range(0, 5):
+            connection.sendto("ACK".encode(), addr)
+
+        time.sleep(1)
+
         print("Establishing UDP connection with " + str(addr[0]) + "," + str(addr[1]))
 
-        response, addr = receive_message(connection)
+        response = ""
+        addr = ""
+        step3 = False  # step2 is on client side ( a similar code block )
+        for _ in range(0, 5):
+            try:
+                temp1, temp2 = receive_message(connection)
+                if temp1 == "TIMEOUT":
+                    continue
+                if not step3:
+                    response = temp1
+                    addr = temp2
+                    step3 = True
+            except IOError:
+                continue
 
-        if response == "TIMEOUT":
+        if response == "" or addr == "":
             print("Client timed out!")
             return False, -1
-        elif "ACK" == response[0]:
+
+        if "ACK" == response[0]:
             print("completed three-way handshake")
             return True, addr
-        elif response[0] == "NACK":
+        elif response[0] == "NACK":  # TODO: can this even happen?
             print("Client should specify what file")  # ... to complete the three way handshake!
             return False, -1
     else:
@@ -206,20 +251,26 @@ def handshakes(connection):
         return False, -1
 
 
-def UDP_Threader(file_name) -> None:
+def UDP_Threader(file_name, port) -> None:
     file_socket = socket(AF_INET, SOCK_DGRAM)
-    file_socket.bind(('127.0.0.1', FILE_PORT))
+    file_socket.bind(('127.0.0.1', port))
     file_socket.settimeout(60)
     connection = file_socket
 
     print("attempting to confirm connection with a three way handshake.")
 
+
     twh, addr = handshakes(connection)
     if twh:
         print("twh success!")
         packets = prepare_file(file_name)
-        connection.sendto(str(len(packets)).encode(), addr)
-        # file_sender(connection, addr, packets)  # This handles selective repeat protocol!
+        for _ in range(0, 5):
+            # length = transform_packet(0,0,str(len(packets)).encode(),0)
+            connection.sendto(("length_" + str(len(packets))).encode(), addr)
+            # connection.sendto(length, addr)
+        time.sleep(1)
+        print("sent")
+        file_sender(connection, addr, packets)  # This handles selective repeat protocol!
     else:
         print("Could not complete the three way handshake :(")
 
@@ -229,6 +280,7 @@ def UDP_Threader(file_name) -> None:
 # ================================================================ #
 #                             END UDP                              #
 # ================================================================ #
+
 def BroadcastToOne(message, connection):
     try:
         connection[0].send(message.encode())
@@ -240,13 +292,14 @@ def BroadcastToOne(message, connection):
                 break
 
 
-def BroadcastToAll(message, connection):
+def BroadcastToAll(message):
     for client in client_list:
         try:
             client[0].send(message.encode())
         except IOError:
             client[0].close()
             client_list.remove(client)
+
 
 
 def find_by_name(name):
@@ -256,8 +309,22 @@ def find_by_name(name):
     return "NOT FOUND"
 
 
-def tcp_file_sender(connection, content):
-    pass
+def tcp_file_sender(addr, filename):
+    con = socket(AF_INET, SOCK_STREAM)
+    con.connect(addr)
+
+    location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+    location = os.path.join(location, "Files")
+
+    print("sending!")
+    with open(os.path.join(location, filename), "rb") as file:
+        packet = file.read(MTU)
+        while packet:
+            con.send(packet)
+            packet = file.read(MTU)
+
+    print("done!")
+    con.close()
 
 
 def Threader(connection: socket, address, name):
@@ -270,34 +337,59 @@ def Threader(connection: socket, address, name):
             if message:
                 protocol = message[0]
                 content = message[1]
+                global control
 
                 if protocol == "ALL":
                     broadcast_msg = "<" + name + ">: " + str(content)
                     print(broadcast_msg)
-                    BroadcastToAll(broadcast_msg, connection)
-                elif protocol == "FILE":
-                    udp_thread = Thread(target=UDP_Threader, args=[content])
-                    udp_thread.start()
-                    time.sleep(0.2)  # giving thread space to start.
-                    connection.sendto(("FILE_" + content).encode(), address)
-                elif protocol == "TCPFILE":
-                    tcp_file_sender(connection, content)
+                    BroadcastToAll(broadcast_msg)
+                    continue
 
-                elif protocol == "DC":
+                if protocol == "FILE":
+                    port = FILE_PORT + control
+                    control += 1
+
+                    udp_thread = Thread(target=UDP_Threader, args=[content, port])
+                    udp_thread.start()
+                    time.sleep(2)  # giving thread space to start.
+                    connection.sendto(("FILE_" + str(port) + "_" + content).encode(), address)
+                    continue
+                elif protocol == "TCPFILE":
+                    port = TCP_PORT + control
+                    control += 1
+                    connection.sendto(("TCPFILE_" + str(port) + "_" + content).encode(), address)
+                    time.sleep(2)
+                    print(connection)  # giving thread space to start.
+                    Thread(target=tcp_file_sender, args=[('127.0.0.1', int(port)), content]).start()
+                    continue
+
+                if protocol == "GETUSERS":
+                    lst = user_list()
+                    connection.sendto(pickle.dumps(lst), address)
+                    continue
+
+                if protocol == "WF":
+                    lst = file_list()
+                    connection.sendto(pickle.dumps(lst), address)
+                    continue
+
+                if protocol == "DC":
                     dc_user(name)
                     print(name, "disconnected!")
                     display_connected()
                     return
-                else:  # if it's a private/direct message
-                    connect = find_by_name(protocol)
-                    broadcast_msg = "<PM-" + name + ">: " + str(content)
-                    BroadcastToOne(broadcast_msg, connect)
+
+                #else - if it's a private/direct message
+                connect = find_by_name(protocol)
+                broadcast_msg = "<PM-" + name + ">: " + str(content)
+                BroadcastToOne(broadcast_msg, connect)
 
         except IOError:
             # Close client socket
             connection.close()
 
 
+# suggestion : put a thread here that listens to exit events
 
 # main loop:
 try:
@@ -321,4 +413,3 @@ try:
 except IOError:
     clients_socket.close()
     sys.exit()
-
