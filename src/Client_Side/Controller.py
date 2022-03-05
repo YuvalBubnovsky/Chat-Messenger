@@ -1,5 +1,6 @@
 import os
 import threading
+import time
 from tkinter import *
 from tkinter import messagebox
 
@@ -126,8 +127,8 @@ class Controller:
         self.set_connected(False)
         self.update_state()
         self.client.send_message(self.client.get_TCP_Socket(), "ALL_" + self.get_username() + " Has Disconnected!")
-        self.clear_all()
         self.client.send_message(self.client.get_TCP_Socket(), "DC_disconnect")
+        self.clear_all()
 
     def file_list(self) -> list:
         location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))

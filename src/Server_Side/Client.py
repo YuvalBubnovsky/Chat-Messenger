@@ -1,7 +1,9 @@
+import os
 import threading
 import time
 from socket import *
 import sys
+import pickle
 from Common import *
 
 
@@ -18,6 +20,8 @@ class Client:
         self.cwnd = 1
         self.response = ""
         self.TCP_Socket = None
+        self.file_list = []
+        self.user_list = []
         self.res_flag = False
         self.taken_flag = False
 
@@ -66,6 +70,18 @@ class Client:
     def get_taken_flag(self):
         return self.taken_flag
 
+    def set_file_list(self, new_list: list):
+        self.file_list = new_list
+
+    def get_file_list(self):
+        return self.file_list
+
+    def set_user_list(self, new_list: list):
+        self.user_list = new_list
+
+    def get_user_list(self):
+        return self.user_list
+
     def receive_message(self, sock: socket):
         try:
             msg, address = sock.recvfrom(8192)
@@ -96,13 +112,12 @@ class Client:
         cwnd = 10
 
         while index != len(packet_list):
-            print("cwnd:", cwnd)
             window_frame = min(index + cwnd + 2,
                                len(packet_list))  # window_frame ensures were in the bounds of the list
             for i in range(index, window_frame):
                 packet, addr, seq_num, checksum, cwnd = self.receive_transformed_message(connection)
 
-                if packet == "TIMEOUT" or cwnd == -1:
+                if packet == "TIMEOUT" or seq_num == -1:
                     connection.sendto(("NACK_" + str(i)).encode(), server_addr)
                 else:
                     try:
@@ -144,24 +159,41 @@ class Client:
                     file.write(_)
 
     def handshakes(self, sock, addr) -> bool:
-        try:
-            sock.sendto("HANDSHAKE_".encode(), addr)
+        for _ in range(0, 5):
+            sock.sendto("HANDSHAKE".encode(), addr)
+        time.sleep(1)
+        res = ""
+        addr = ""
+        step2 = False  # step1 is on server side ( a similar code block )
+        for _ in range(0, 5):
+            try:
+                temp1, temp2 = self.receive_message(sock)
+                if temp1 == "TIMEOUT":
+                    continue
+                if not step2:
+                    res = temp1
+                    addr = temp2
+                    step2 = True
+            except IOError:
+                continue
+        if res == "" or addr == "":
+            print("could not receive ACK back")
+            return False
 
-            res, addr = self.receive_message(sock)
-            if res[0] == "ACK":
-                print("Server Is Live!")
-            else:
-                print("No Server response - try again")
-                return False
+        if res[0] == "ACK":
+            print("Server Is Live!")
+        else:
+            print("No Server response - try again")
+            return False
 
+        for _ in range(0, 5):
             sock.sendto("ACK".encode(), addr)  # also completes the three-way handshake
-        except OSError:
-            print("timed out")
 
+        time.sleep(1)
         return True
 
-    def UDP_Threader(self, filename) -> None:
-        server_addr = (self.server_host, self.udp_port)
+    def UDP_Threader(self, filename, port) -> None:
+        server_addr = (self.server_host, port)
         File_Socket = socket(AF_INET, SOCK_DGRAM)
         File_Socket.settimeout(60)
         File_Socket.connect(server_addr)
@@ -170,8 +202,24 @@ class Client:
 
         if self.handshakes(File_Socket, server_addr):
             print("twh success")
-            packets_len = File_Socket.recv(4096).decode()
+
+            packets_len = ""
+            step4 = False  # step3 is on client side ( a similar code block )
+            for _ in range(0, 5):
+                try:
+                    temp1, _ = self.receive_message(File_Socket)
+                    if not step4:
+                        packets_len = temp1[1]
+                        step4 = True
+                except IOError or UnicodeDecodeError:
+                    continue
+
+            if packets_len == "":
+                print("Server timed out! - could not receive amount of packets.")
+                return
+
             packet_list = [None] * int(packets_len)
+
             # ^ mirroring the list being sent from server - allows skipping re-ordering later
             print("Preparing to receive %s packages" % packets_len)
 
@@ -184,28 +232,62 @@ class Client:
         #                             END UDP                              #
         # ================================================================ #
 
+    def TCP_Threader(self, fname, port):
+        con = socket(AF_INET, SOCK_STREAM)
+        con.bind(('', port))
+        con.listen(5)
+
+        c, addr = con.accept()
+
+        location = os.path.realpath(os.getcwd())
+        location = os.path.join(location, "Files")
+
+        print("reciving!")
+
+        with open(os.path.join(location, "downloaded" + fname), "ab") as file:
+            packet = c.recv(self.MTU)
+            while packet:
+                file.write(packet)
+                packet = c.recv(self.MTU)
+        print("received the file!")
+        con.close()
+
     def response_thread(self, client_socket):
         time.sleep(0.2)
         try:
             while self.running:
-                res = client_socket.recv(8192)
-                res = res.decode()
-                res = res.split('_', 1)
+                rsp = client_socket.recv(8192)
 
-                if res == "TIMEOUT":
-                    print("Connection Timed Out")
-                    sys.exit(0)
+                try:
+                    rsp = pickle.loads(rsp)
+                    protocol = rsp.pop()
+                    if protocol == "FILES":
+                        self.set_file_list(rsp)
+                    if protocol == "USERS":
+                        self.set_user_list(rsp)
+                except pickle.PickleError:
+                    rsp = rsp.decode()
+                    rsp = rsp.split('_', 1)
 
-                if res[0] == "DCD":
-                    self.running = False
-                    print("Disconnected!")
-
-                if res[0] == "FILE":
-                    threading.Thread(target=self.UDP_Threader, args=(res[1],)).start()
-                else:
-                    self.set_response(res[0])
-                    self.set_res_flag(True)
-                # print(res)
+                    if rsp == "TIMEOUT":
+                        print("connection timed out")  # we do not expect a timeout here!
+                        sys.exit(0)
+                    if rsp[0] == "DCD":
+                        self.running = False
+                        print("Disconnected!")
+                    if rsp[0] == "TCPFILE":
+                        temp = rsp[1].split('_', 1)
+                        port = temp[0]
+                        fname = temp[1]
+                        threading.Thread(target=self.TCP_Threader, args=[fname, int(port)]).start()
+                    if rsp[0] == "FILE":
+                        temp = rsp[1].split('', 1)
+                        port = temp[0]
+                        fname = temp[1]
+                        threading.Thread(target=self.UDP_Threader, args=[fname, int(port)]).start()
+                    else:
+                        self.set_response(rsp[0])
+                        self.set_res_flag(True)
         except OSError:
             print("No Longer Receiving Messages")
             return
@@ -243,5 +325,3 @@ class Client:
             print("An error has occurred, please try again\r\n Closing client connection")
             sys.exit(1)
 
-    def stop(self):
-        pass
