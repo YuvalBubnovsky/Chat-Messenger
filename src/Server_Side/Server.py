@@ -301,6 +301,15 @@ def BroadcastToAll(message):
             client_list.remove(client)
 
 
+def BroadcastList(lst):
+    for client in client_list:
+        try:
+            client[0].send(pickle.dumps(lst))
+        except IOError:
+            client[0].close()
+            client_list.remove(client)
+
+
 
 def find_by_name(name):
     for client in client_list:
@@ -376,6 +385,8 @@ def Threader(connection: socket, address, name):
                 if protocol == "DC":
                     dc_user(name)
                     print(name, "disconnected!")
+                    lst = user_list()
+                    BroadcastList(lst)
                     display_connected()
                     return
 
@@ -389,7 +400,6 @@ def Threader(connection: socket, address, name):
             connection.close()
 
 
-# suggestion : put a thread here that listens to exit events
 
 # main loop:
 try:
@@ -405,6 +415,8 @@ try:
                 client_list.append((connection_socket, username))
                 # client_list.append((connection_socket, username))
                 print(username + " Connected!")
+                lst = user_list()
+                BroadcastList(lst)
                 client_thread = Thread(target=Threader, args=(connection_socket, adr, username))
                 client_thread.start()
         except OSError:

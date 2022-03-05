@@ -13,7 +13,7 @@ class Client_GUI:
         self.root.title("Client")
         self.root.geometry("640x320")
         self.root.resizable(width=False, height=False)
-        self.controller = Controller.Controller(None, None, None, None, None, None, None, None)
+        self.controller = Controller.Controller(None, None, None, None, None, None, None)
         self.build_gui()
         self.controller.set_root(self.root)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -25,7 +25,6 @@ class Client_GUI:
         self.build_bottom_frame()
 
     # Function to initiate proper shutdown if user exits through "X" button
-    # TODO: add shutdown
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             if self.controller.get_connected():
@@ -64,12 +63,6 @@ class Client_GUI:
             button.config(text="Login")
             self.controller.disconnect()
 
-    def on_whois(self):
-        pass
-
-    def on_showfile(self):
-        pass
-
     def build_top_frame(self):
         top_frame = Labelframe(self.root, text='Menu')
         top_frame.pack(padx=15)
@@ -78,13 +71,8 @@ class Client_GUI:
                               command=lambda: self.on_login(login_button))
         login_button.pack(side='left', padx=5)
 
-        show_online_button = Button(top_frame, text="Who's Online", width=10, command=self.on_whois,
-                                    state=DISABLED)
-        show_online_button.pack(side='left', padx=5)
-        self.controller.set_online_button(show_online_button)
-
-        show_server_files_button = Button(top_frame, text="Show Files", width=10,  # TODO: switch this command
-                                          command=self.on_showfile, state=DISABLED)
+        show_server_files_button = Button(top_frame, text="Show Files", width=10,
+                                          command=self.controller.show_file_list, state=DISABLED)
         show_server_files_button.pack(side='left', padx=5)
         self.controller.set_files_button(show_server_files_button)
 
@@ -108,13 +96,13 @@ class Client_GUI:
         # TODO: populate list properly and bind double click functions
         user_list = Listbox(chat_frame, height=10, selectmode=SINGLE)
         user_list.pack(side='right', padx=5)
+        user_list.bind('<Double-1>', lambda event: self.controller.send_pm())
         self.controller.set_user_list(user_list)
 
     def build_bottom_frame(self):
         bottom_frame = Labelframe(self.root, text='Enter Message')
         chat_area = Entry(bottom_frame, width=84, state=DISABLED)
 
-        # TODO: add a bind for sending messages using return key
         chat_area.pack(side='left', pady=5)
         send_button = Button(bottom_frame, text="Send", width=10, command=lambda: self.controller.send_message(),
                              state=DISABLED)

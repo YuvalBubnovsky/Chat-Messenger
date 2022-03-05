@@ -1,4 +1,3 @@
-import os
 import threading
 import time
 from tkinter import *
@@ -7,15 +6,16 @@ from tkinter import messagebox
 from Server_Side import Client
 
 
+# TODO: Fix bug of logging in / logging out of same GUI window
+# TODO: Add ALL_ protocol to messages without protocol in the bottom Entry
+
 class Controller:
 
-    def __init__(self, root, chat_box, user_input, online_button, files_button, clear_button, user_list, send_button):
+    def __init__(self, root, chat_box, user_input, files_button, clear_button, user_list, send_button):
         self.client = Client.Client('127.0.0.1', 55000, 55001, " ", 1500, 5, True)
-        # TODO: Is server needed?
         self.root = root
         self.chat_box = chat_box
         self.user_input = user_input
-        self.online_button = online_button
         self.files_button = files_button
         self.clear_button = clear_button
         self.send_button = send_button
@@ -63,7 +63,7 @@ class Controller:
         return self.username
 
     def update_state(self):
-        for widget in [self.user_input, self.online_button, self.files_button, self.clear_button, self.user_list,
+        for widget in [self.user_input, self.files_button, self.clear_button, self.user_list,
                        self.send_button]:
             if self.is_connected:
                 widget.config(state=NORMAL)
@@ -88,9 +88,16 @@ class Controller:
             if self.client.get_res_flag():
                 self.chat_box.config(state=NORMAL)
                 to_print = self.client.get_response()
-                self.chat_box.insert('end',to_print+"\n")
+                self.chat_box.insert('end', to_print + "\n")
                 self.client.set_res_flag(False)
                 self.chat_box.config(state=DISABLED)
+
+            if self.client.get_user_flag():
+                lst = self.client.get_user_list()
+                self.user_list.delete(0, 'end')
+                for user in lst:
+                    self.user_list.insert("end", user)
+                self.client.set_user_flag(False)
 
     def write_message(self, message: str):
         self.chat_box.config(state=NORMAL)
@@ -115,8 +122,13 @@ class Controller:
         self.set_connected(True)
         self.update_state()
         self.client.send_message(self.client.get_TCP_Socket(), "ALL_" + user_name + " Has Joined The Chat Room!")
+        time.sleep(1)
         self.set_username(user_name)
         threading.Thread(target=self.write_chat, daemon=True).start()
+        time.sleep(1)
+        self.populate_user_list()
+        time.sleep(1)
+        self.populate_file_list()
 
     def send_message(self):
         message = self.user_input.get()
@@ -130,25 +142,21 @@ class Controller:
         self.client.send_message(self.client.get_TCP_Socket(), "DC_disconnect")
         self.clear_all()
 
-    def file_list(self) -> list:
-        location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-        location = os.path.join(location, "Files")
-        location = os.fsencode(location)
-        names_lst = []
-        for file in os.listdir(location):
-            filename = os.fsdecode(file)
-            names_lst.append(filename)
-            # print(filename, ": ", file)
-        return names_lst
-
-    # TODO: test the function below with proper enligh PC
-
-
-'''
-    def show_server_files(self):
-        files = self.file_list()
-        self.write_message("========= SERVER FILES =========\n")
-        for file in files:
+    def show_file_list(self):
+        file_lst = self.client.get_file_list()
+        self.write_message("========== SERVER FILE LIST ==========")
+        for file in file_lst:
             self.write_message(file)
-        self.write_message("================================")
-'''
+        self.write_message("============ END FILE LIST ===========")
+
+    def send_pm(self):
+        cs = self.user_list.get(self.user_list.curselection())
+        send_to = cs + "_"
+        self.user_input.delete(0, "end")
+        self.user_input.insert(0, send_to)
+
+    def populate_user_list(self):
+        self.client.send_message(self.client.get_TCP_Socket(), "GETUSERS_")  # Get user list
+
+    def populate_file_list(self):
+        self.client.send_message(self.client.get_TCP_Socket(), "WF_")  # Get file list

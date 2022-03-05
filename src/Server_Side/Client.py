@@ -23,6 +23,7 @@ class Client:
         self.file_list = []
         self.user_list = []
         self.res_flag = False
+        self.user_flag = False
         self.taken_flag = False
 
     def set_res_flag(self, new_flag: bool):
@@ -30,6 +31,12 @@ class Client:
 
     def get_res_flag(self):
         return self.res_flag
+
+    def set_user_flag(self, new_flag: bool):
+        self.user_flag = new_flag
+
+    def get_user_flag(self):
+        return self.user_flag
 
     def set_TCP_Socket(self, sock):
         self.TCP_Socket = sock
@@ -264,6 +271,7 @@ class Client:
                     if protocol == "FILES":
                         self.set_file_list(rsp)
                     if protocol == "USERS":
+                        self.set_user_flag(True)
                         self.set_user_list(rsp)
                 except pickle.PickleError:
                     rsp = rsp.decode()
