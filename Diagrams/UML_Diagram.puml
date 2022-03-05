@@ -44,14 +44,28 @@ class Common{
 
 class Client_GUI{
 - Controller
-+ server_activate()
++ build_gui()
++ on_closing()
++ on_login()
+
 }
 
 class Controller{
 - parent_path
 - server_jar_path
 - server_name
-+ server_activate()
++ update_state()
++ clear_all()
++ clear_text()
++ write_chat()
++ write_message()
++ connect()
++ send_message()
++ disconnect()
++ show_file_list()
++ send_pm()
++ populate_user_list()
++ populate_file_list()
 }
 
 class Server{
@@ -85,5 +99,9 @@ class Server{
 Server <- Client : Connect
 Server <--Common : "  Import"
 Client <--Common
+Controller <--Client_GUI
+Controller -> Client_GUI
+Controller --> Client
+Controller <-- Client
 
 @enduml
