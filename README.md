@@ -64,20 +64,11 @@ This implies a strong foundation for our code and allows us to be sure that the 
 For these ‘more complex’ methods we did not revise a test, seeing as it would require essentially writing the same method again, instead we tested it rigorously and often by hand.</br></br>
 for example, sending files over UDP is the biggest method we built, and we tested it by activating the method and seeing that we indeed got a correct file transfer.
 
-
-
-
-## The Classes/Scripts
-``` Server.py ``` - This is *not* a class but a script </br>
- </br>
-``` Client.py ``` - This class is in charge of communicating with the server, receiving the game state and sending our agent's next move.  </br> 
-</br>
-``` Controller ``` - This class is the *"main"* class, in charge of drawing the game state, activating ``` RunServerScript ``` once, and telling the agents to move.  </br>
- </br>
-``` Client_gui ``` - This class is in charge of game initialization for ``` Arena ```.  </br>
+## Sequence Diagram
+![image](https://user-images.githubusercontent.com/73063105/156900386-1cc0dab6-5bd1-4869-ab0a-6f036d498e81.png)
 
 ## Hierarchy
-
+![image](https://user-images.githubusercontent.com/73063105/156900396-b5c749b6-ab26-4470-a43c-ca79243984f4.png)
 
 ## Links
 sending lists as a stream of bytes - https://docs.python.org/3/library/pickle.html </br>
