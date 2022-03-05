@@ -12,11 +12,25 @@ This is a class for potentially common methods between our server and client
 # 'I   -->   unsigned int    - ( 4 bytes )
 
 def transform_packet(seq_num, checksum, packet, cwnd):
+    """
+    This method uses the struct library to add bytes to a packet
+    :param seq_num: a sequence number for RDT
+    :param checksum: a checksum for the packet
+    :param packet: a stream of bytes, prefferably using .encode()
+    :param cwnd: the current window for RDT
+    :return: a packet with 10 extra bytes at its start.
+    """
     return struct.pack('!LHI', seq_num % ((1 << 16) - 1), int(checksum), int(cwnd)) + packet
     # seq_num with a binary modulo of (32,768 - 1)
 
 
 def unpack_transformed_packet(packet):
+    """
+    Unpacks the packet using the struct library.
+    returns a (sequence number, checksum, current window) tuple, packet  ( 2 items )
+    :param packet: a transformed packet
+    :return: tuple, packet
+    """
     return struct.unpack('!LHI', packet[:10]), packet[10:]
 
 

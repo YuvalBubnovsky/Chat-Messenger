@@ -32,6 +32,11 @@ print("Ready to serve on port ", SERVER_PORT)
 
 
 def prepare_file(filename) -> list:
+    """
+    breaks the file into packets of size 1490 and sorts them into a list
+    :param filename: the name of the file
+    :return: a sorted list contating the packets of the file
+    """
     packet_list = []
     print(__file__)
     location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -43,14 +48,22 @@ def prepare_file(filename) -> list:
 
 
 def user_list() -> list:
+    """
+    this method constructs a list of our users names and returns it
+    :return: a list of strings
+    """
     lst = []
     for client in client_list:
         lst.append(client[1])
-    lst.append("USERS")
+    lst.append("USERS")  # for protocol usage!
     return lst
 
 
 def file_list() -> list:
+    """
+        this method constructs a list of our available files and returns it
+        :return: a list of strings
+        """
     location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     location = os.path.join(location, "Files")
     location = os.fsencode(location)
@@ -59,11 +72,16 @@ def file_list() -> list:
         filename = os.fsdecode(file)
         names_lst.append(filename)
 
-    names_lst.append("FILES")
+    names_lst.append("FILES") # for protocol usage!
     return names_lst
 
 
 def username_exists(name):
+    """
+    checks if a name is a taken username
+    :param name: string
+    :return: bool
+    """
     for client in client_list:
         if client[1] == name:
             return True
@@ -71,6 +89,10 @@ def username_exists(name):
 
 
 def display_connected():
+    """
+    self-explanatory, this is server side only.
+    :return: none
+    """
     print("those connected are:")
     if len(client_list) == 0:
         print("No one :(")
@@ -80,6 +102,11 @@ def display_connected():
 
 
 def dc_user(name):
+    """
+    this method removes a user based on his unique username
+    :param name: string
+    :return: none
+    """
     for client in client_list:
         if client[1] == name:
             client_list.remove(client)
@@ -87,6 +114,12 @@ def dc_user(name):
 
 
 def receive_message(sock: socket):
+    """
+    this method receives a message using the socket and then also breaks it into segments
+    of protocol and the actual message and returns them as a pair
+    :param sock: socket
+    :return: list, tuple
+    """
     try:
         msg, address = sock.recvfrom(8192)
         msg = msg.decode()
@@ -102,6 +135,13 @@ def receive_message(sock: socket):
 
 
 def file_sender(connection, client_addr, packet_list) -> None:
+    """
+    This method implements RDT with selective repeat, rolling window, and CC.
+    :param connection: socket
+    :param client_addr: tuple
+    :param packet_list: list of byte objects
+    :return: none
+    """
     connection.settimeout(timeout * 2)
     index = 0
     ack_list = []
@@ -193,7 +233,12 @@ def file_sender(connection, client_addr, packet_list) -> None:
     print("done!")
 
 
-def handshakes(connection) -> (bool, any):  # expecting True,socket on success or False, -1 on error
+def handshakes(connection) -> (bool, any):
+    """
+    this method attempts to handshake with the client by bruteforce
+    :param connection: socket
+    :return: (True,socket) on success or (False, -1) on error
+    """
     step1 = False
     msg = ""
     addr = ""
@@ -252,6 +297,12 @@ def handshakes(connection) -> (bool, any):  # expecting True,socket on success o
 
 
 def UDP_Threader(file_name, port) -> None:
+    """
+    this thread only opens when relevant protocol is received and is in charge of Reliable UDP file transfer
+    :param file_name: name of the file to be transferred
+    :param port: avaialbe port
+    :return: none
+    """
     file_socket = socket(AF_INET, SOCK_DGRAM)
     file_socket.bind(('127.0.0.1', port))
     file_socket.settimeout(60)
@@ -281,6 +332,15 @@ def UDP_Threader(file_name, port) -> None:
 # ================================================================ #
 
 def BroadcastToOne(message, connection):
+    """
+    receives a message and attemtps to send it to one user
+    this requires that the protocol part of the message will be
+    the username of the user to be sent a private message
+    that is - username_pm
+    :param message: string
+    :param connection: socket
+    :return: none
+    """
     try:
         connection[0].send(message.encode())
     except IOError:
@@ -292,6 +352,11 @@ def BroadcastToOne(message, connection):
 
 
 def BroadcastToAll(message):
+    """
+    this method receives a message and broadcasts it to all connected users
+    :param message: string
+    :return: none
+    """
     for client in client_list:
         try:
             client[0].send(message.encode())
@@ -301,6 +366,11 @@ def BroadcastToAll(message):
 
 
 def BroadcastList(lst):
+    """
+    broadcasts lst to everyone
+    :param lst: list of strings
+    :return: none
+    """
     for client in client_list:
         try:
             client[0].send(pickle.dumps(lst))
@@ -310,6 +380,11 @@ def BroadcastList(lst):
 
 
 def find_by_name(name):
+    """
+    iterates over the client list and attempts to find the client with username matching name
+    :param name: string
+    :return: tuple or "NOT FOUND" if none matched name
+    """
     for client in client_list:
         if client[1] == name:
             return client
@@ -317,6 +392,12 @@ def find_by_name(name):
 
 
 def tcp_file_sender(addr, filename):
+    """
+    this method sends a file over tcp
+    :param addr: tuple
+    :param filename: string
+    :return: none
+    """
     con = socket(AF_INET, SOCK_STREAM)
     con.connect(addr)
 
@@ -335,6 +416,14 @@ def tcp_file_sender(addr, filename):
 
 
 def Threader(connection: socket, address, name):
+    """
+    The main loop for any tcp connection coming to our server, and in charge of sorting the message to it's
+    appropriate method based on its protocol
+    :param connection: socket
+    :param address: tuple
+    :param name: string
+    :return: none
+    """
     while running:
         try:
             message = connection.recv(8192)

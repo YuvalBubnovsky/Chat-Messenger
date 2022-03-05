@@ -86,6 +86,8 @@ class MyTestCase(unittest.TestCase):
 
     def test_simultaneous_messages(self):
         # the idea is to see this in action - and for it to not crash.
+        # it simply sends 0 then 1 then 2 and expects to receive them in the same order.
+        # that is send - receive - send - receive - send - receive
         try:
             udp_sock_1 = socket(AF_INET, SOCK_DGRAM)
             udp_sock_1.bind(('127.0.0.1', 60000))

@@ -90,6 +90,12 @@ class Client:
         return self.user_list
 
     def receive_message(self, sock: socket):
+        """
+        this method receives a message using the socket and then also breaks it into segments
+        of protocol and the actual message and returns them as a pair
+        :param sock: socket
+        :return: list, tuple
+        """
         try:
             msg, address = sock.recvfrom(8192)
             msg = msg.decode()
@@ -99,6 +105,13 @@ class Client:
             return "TIMEOUT", -1
 
     def receive_transformed_message(self, sock: socket):
+        """
+        this method receives a transformed message using the socket and then also breaks it into segments
+        of protocol and the actual message, which it then unpacks and assigns to the appropriate values
+        and returns them
+        :param sock: socket
+        :return: packet, tuple, string, number, number
+        """
         try:
             transformed_msg, address = sock.recvfrom(8192)
             temp, packet = unpack_transformed_packet(transformed_msg)
@@ -114,6 +127,14 @@ class Client:
         # ================================================================ #
 
     def file_receiver(self, connection, server_addr, packet_list, fname) -> None:
+        """
+           This method implements RDT with selective repeat, rolling window, and CC.
+           :param connection: socket
+           :param server_addr: tuple
+           :param packet_list: list of byte objects
+           :param fname: the name of the file
+           :return: none
+           """
         index = 0
         connection.settimeout(self.timeout)
         cwnd = 10
@@ -175,6 +196,12 @@ class Client:
         time.sleep(0.15)
 
     def handshakes(self, sock, addr) -> bool:
+        """
+            this method attempts to handshake with the server by bruteforce
+            :param sock: socket
+            :param addr: tuple
+            :return: (True,socket) on success or (False, -1) on error
+            """
         for _ in range(0, 5):
             sock.sendto("HANDSHAKE".encode(), addr)
         time.sleep(1)
@@ -213,6 +240,13 @@ class Client:
         return True
 
     def UDP_Threader(self, filename, port) -> None:
+        """
+        this thread only activates upon a UDP file transfer request and is in charge of handling it
+        seperately from the rest of the processes
+        :param filename: string
+        :param port: number
+        :return: none
+        """
         server_addr = (self.server_host, port)
         File_Socket = socket(AF_INET, SOCK_DGRAM)
         File_Socket.settimeout(60)
@@ -261,6 +295,13 @@ class Client:
         # ================================================================ #
 
     def TCP_Threader(self, fname, port):
+        """
+        this thread only activates upon a TCP file transfer request and is in charge of handling it
+        seperately from the rest of the processes
+        :param fname: string
+        :param port: number
+        :return: none
+        """
         con = socket(AF_INET, SOCK_STREAM)
         con.bind(('', port))
         con.listen(5)
@@ -284,12 +325,18 @@ class Client:
         con.close()
 
     def response_thread(self, client_socket):
+        """
+        this thread is the main loop of the client, in charge of handling incoming messages from the server,
+        and sorting them to their appropriate methods based on their protocol.
+        :param client_socket:
+        :return: none
+        """
         time.sleep(0.2)
         try:
             while self.running:
                 rsp = client_socket.recv(8192)
 
-                try:
+                try:  # attempts to retrieve a stream of bytes into a list using the pickle library
                     rsp = pickle.loads(rsp)
                     protocol = rsp.pop()
                     if protocol == "FILES":
@@ -298,6 +345,7 @@ class Client:
                         self.set_user_flag(True)
                         self.set_user_list(rsp)
                 except pickle.PickleError or pickle.UnpicklingError:
+                    # if it is unsuccessful it will throw an error, and we will attempt to receive a text response
                     rsp = rsp.decode()
                     rsp = rsp.split('_', 1)
 
@@ -325,6 +373,12 @@ class Client:
             return
 
     def send_message(self, client_socket, message):
+        """
+        sends a message to the server
+        :param client_socket: socket
+        :param message: string
+        :return: none
+        """
         try:
             checker = message.split('_', 1)
             if checker[0] == "DC":
@@ -337,6 +391,7 @@ class Client:
             self.set_res_flag(True)
             return
 
+    # attempts to secure a connection to the server.
     def run(self):
         try:
             clientSocket = socket(AF_INET, SOCK_STREAM)
