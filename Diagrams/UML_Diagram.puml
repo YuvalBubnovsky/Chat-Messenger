@@ -1,0 +1,89 @@
+@startuml
+class Client
+class Server
+class Common
+class Client_GUI
+class Controller
+
+
+class Client{
+- server_host
+- server_port
+- udp_port
+- username
+- MTU
+- timeout
+- running
+- cwnd
+- response
+- TCP_Socket
+- file_list
+- user_list
+- res_flag
+- taken_flag
+
++ all getters and setters
+
++ receive_message()
++ receive_transformed_message()
++ file_receiver()
++ handshakes()
++ UDP_Threader()
++ TCP_Threader()
++ response_thread()
++ send_message()
++ run()
+}
+class Common{
+
++ Transform_packet()
++ unpack_transformed_packet()
++ calc_checksum()
+
+}
+
+class Client_GUI{
+- Controller
++ server_activate()
+}
+
+class Controller{
+- parent_path
+- server_jar_path
+- server_name
++ server_activate()
+}
+
+class Server{
+- PING_PORT
+- SERVER_PORT
+- FILE_PORT
+- TCP_PORT
+- MTU
+- client_list
+- window_size
+- timeout
+- control
+
++ prepare_file()
++ user_list()
++ file_list()
++ username_exists()
++ display_connected()
++ dc_user()
++ receive_message()
++ file_sender()
++ handshakes()
++ UDP_Threader()
++ BroadcastToOne()
++ BroadcastToAll()
++ find_by_name()
++ tcp_file_sender()
++ Threader()
+
+}
+Server <- Client : Connect
+Server <--Common : "  Import"
+Client <--Common
+
+@enduml
