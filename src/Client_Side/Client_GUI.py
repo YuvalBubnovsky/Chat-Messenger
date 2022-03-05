@@ -6,31 +6,34 @@ import Controller
 
 class Client_GUI:
 
-
-
+    '''GUI Window initialization'''
     def __init__(self):
         self.root = Tk()
         self.root.title("Client")
         self.root.geometry("640x320")
         self.root.resizable(width=False, height=False)
+        # Passing NONE arguments to controller to be set later
         self.controller = Controller.Controller(None, None, None, None, None, None, None)
         self.build_gui()
         self.controller.set_root(self.root)
+        # Standard TKinter shutdown protocol
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.mainloop()
 
+    '''Uses built-in frame building functions to put everything together and display'''
     def build_gui(self):
         self.build_top_frame()
         self.build_mid_frame()
         self.build_bottom_frame()
 
-    # Function to initiate proper shutdown if user exits through "X" button
+    '''Function to initiate proper shutdown if user exits through "X" button'''
     def on_closing(self):
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
             if self.controller.get_connected():
                 self.controller.disconnect()
             self.root.destroy()
 
+    '''Takes in user input and connects/disconnects from the server'''
     def on_login(self, button: Button):
         if button.cget('text') == "Login":
             button.config(text="Logout")
@@ -41,7 +44,6 @@ class Client_GUI:
             username = StringVar()
             user_address = StringVar()
 
-            # Set username label
             username_label = Label(login_screen, text="Username  ")
             username_label.place(relx=0.5, rely=0.2, anchor=CENTER)
 
@@ -63,6 +65,7 @@ class Client_GUI:
             button.config(text="Login")
             self.controller.disconnect()
 
+    '''Builds top frame for GUI'''
     def build_top_frame(self):
         top_frame = Labelframe(self.root, text='Menu')
         top_frame.pack(padx=15)
@@ -81,6 +84,7 @@ class Client_GUI:
         clear_button.pack(side='left', padx=5)
         self.controller.set_clear_button(clear_button)
 
+    '''Builds middle frame for GUI'''
     def build_mid_frame(self):
         chat_frame = Labelframe(self.root, text='Chat Box')
         chat_frame.pack(side='top', padx=15)
@@ -98,6 +102,7 @@ class Client_GUI:
         user_list.bind('<Double-1>', lambda event: self.controller.send_pm())
         self.controller.set_user_list(user_list)
 
+    '''Builds bottom frame for GUI'''
     def build_bottom_frame(self):
         bottom_frame = Labelframe(self.root, text='Enter Message')
         chat_area = Entry(bottom_frame, width=84, state=DISABLED)

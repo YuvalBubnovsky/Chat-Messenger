@@ -46,7 +46,10 @@ As for CC it only changes the window size, seeing as we are only sending packets
 
 ### GUI
 
-
+The design pattern behind our GUI is MVC (Model - View - Controller) where the Client-Server backend logic is the model, the Client_GUI class the the view and the controller is the controller class. <br>
+The Client_GUI & Controller classes are designed as objects to simplify their relationship, where the Controller communicates with both the frontend/backend and also implements user input to the program, this MVC design allowed us to "seperate" the actual program logic from what the user sees.<br>
+We used Python's TKinter library for our GUI.<br>
+Upon program start, a TKinter window is created with an instance of a Controller inside, Same Controller has an instance of a Client within it, this design allows up to implement MVC, user input is performed on the GUI and transfered over to the controller, which assigns the correct function and executes.
 
 ### Unit-testing
 
