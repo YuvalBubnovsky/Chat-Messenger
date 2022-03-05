@@ -146,7 +146,7 @@ def file_sender(connection, client_addr, packet_list) -> None:
 
         for i in range(index, window_frame):
             res, addr = receive_message(connection)
-            threshold = cwnd/2
+            threshold = cwnd / 2
 
             if res == "TIMEOUT" or res[0] == "TIMEOUT":
                 if not first_loss:
@@ -243,7 +243,7 @@ def handshakes(connection) -> (bool, any):  # expecting True,socket on success o
         if "ACK" == response[0]:
             print("completed three-way handshake")
             return True, addr
-        elif response[0] == "NACK":  # TODO: can this even happen?
+        elif response[0] == "NACK":
             print("Client should specify what file")  # ... to complete the three way handshake!
             return False, -1
     else:
@@ -258,7 +258,6 @@ def UDP_Threader(file_name, port) -> None:
     connection = file_socket
 
     print("attempting to confirm connection with a three way handshake.")
-
 
     twh, addr = handshakes(connection)
     if twh:
@@ -308,7 +307,6 @@ def BroadcastList(lst):
         except IOError:
             client[0].close()
             client_list.remove(client)
-
 
 
 def find_by_name(name):
@@ -390,7 +388,7 @@ def Threader(connection: socket, address, name):
                     display_connected()
                     return
 
-                #else - if it's a private/direct message
+                # else - if it's a private/direct message
                 connect = find_by_name(protocol)
                 broadcast_msg = "<PM-" + name + ">: " + str(content)
                 BroadcastToOne(broadcast_msg, connect)
@@ -398,7 +396,6 @@ def Threader(connection: socket, address, name):
         except IOError:
             # Close client socket
             connection.close()
-
 
 
 # main loop:
@@ -416,6 +413,7 @@ try:
                 # client_list.append((connection_socket, username))
                 print(username + " Connected!")
                 lst = user_list()
+                time.sleep(2)
                 BroadcastList(lst)
                 client_thread = Thread(target=Threader, args=(connection_socket, adr, username))
                 client_thread.start()

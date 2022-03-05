@@ -115,7 +115,7 @@ class Client:
 
     def file_receiver(self, connection, server_addr, packet_list, fname) -> None:
         index = 0
-        connection.settimeout(timeout)
+        connection.settimeout(self.timeout)
         cwnd = 10
 
         while index != len(packet_list):
@@ -137,8 +137,10 @@ class Client:
                             if answer == "yes":
                                 connection.sendto("CONTINUE".encode(), server_addr)
                             else:
-                                print("Relaying STOP file download to server")
+                                self.set_response("Relaying Stop Message To Server")
+                                self.set_res_flag(True)
                                 connection.sendto("STOP".encode(), server_addr)
+                                time.sleep(0.2)
                                 return
                         else:  # in this case the response is a modifed packet.
                             if calc_checksum(packet) == checksum:
@@ -158,12 +160,19 @@ class Client:
                             connection.sendto(("NACK_" + str(seq_num)).encode(), server_addr)
 
         connection.sendto("ACKALL".encode(), server_addr)
-        print("Received all the packets and now assembling them to a file!")
+        self.set_response("Received All Packets And Assembling Them To A File..")
+        self.set_res_flag(True)
+        time.sleep(0.15)
 
         with open("downloaded_" + fname, "ab") as file:
             for _ in packet_list:
                 if _ is not None:  # even after RDT some packets may be missing - this is a precaution.
                     file.write(_)
+
+        last_byte = str(bytearray(packet_list[-1])[-1])
+        self.set_response("Last Byte Is "+ last_byte)
+        self.set_res_flag(True)
+        time.sleep(0.15)
 
     def handshakes(self, sock, addr) -> bool:
         for _ in range(0, 5):
@@ -188,9 +197,13 @@ class Client:
             return False
 
         if res[0] == "ACK":
-            print("Server Is Live!")
+            self.set_response("Server Is Live! Initializing Download..")
+            self.set_res_flag(True)
+            time.sleep(0.2)
         else:
-            print("No Server response - try again")
+            self.set_response("No Server Response...Please Try Again...")
+            self.set_res_flag(True)
+            time.sleep(0.2)
             return False
 
         for _ in range(0, 5):
@@ -205,10 +218,14 @@ class Client:
         File_Socket.settimeout(60)
         File_Socket.connect(server_addr)
 
-        print("attempting to confirm connection with a three way handshake.")
+        self.set_response("Attempting To Confirm Connection With A Three-Way Handshake..")
+        self.set_res_flag(True)
+        time.sleep(0.5)
 
         if self.handshakes(File_Socket, server_addr):
-            print("twh success")
+            self.set_response("Three-Way Handshake Success!")
+            self.set_res_flag(True)
+            time.sleep(0.5)
 
             packets_len = ""
             step4 = False  # step3 is on client side ( a similar code block )
@@ -222,13 +239,17 @@ class Client:
                     continue
 
             if packets_len == "":
-                print("Server timed out! - could not receive amount of packets.")
+                self.set_response("Server Timed Out! Couldn't Receive Amount of Packages")
+                self.set_res_flag(True)
+                time.sleep(0.5)
                 return
 
             packet_list = [None] * int(packets_len)
 
             # ^ mirroring the list being sent from server - allows skipping re-ordering later
-            print("Preparing to receive %s packages" % packets_len)
+            self.set_response("Preparing to receive %s packages.." % packets_len)
+            self.set_res_flag(True)
+            time.sleep(0.5)
 
             self.file_receiver(File_Socket, server_addr, packet_list, filename)
         else:
@@ -249,14 +270,17 @@ class Client:
         location = os.path.realpath(os.getcwd())
         location = os.path.join(location, "Files")
 
-        print("reciving!")
+        self.set_response("Receiving Request File via TCP...")
+        self.set_res_flag(True)
 
-        with open(os.path.join(location, "downloaded" + fname), "ab") as file:
+        with open("downloaded" + fname, "ab") as file:
             packet = c.recv(self.MTU)
             while packet:
                 file.write(packet)
                 packet = c.recv(self.MTU)
-        print("received the file!")
+        self.set_response("Received File Via TCP!!!")
+        self.set_res_flag(True)
+        time.sleep(0.5)
         con.close()
 
     def response_thread(self, client_socket):
@@ -273,7 +297,7 @@ class Client:
                     if protocol == "USERS":
                         self.set_user_flag(True)
                         self.set_user_list(rsp)
-                except pickle.PickleError:
+                except pickle.PickleError or pickle.UnpicklingError:
                     rsp = rsp.decode()
                     rsp = rsp.split('_', 1)
 
@@ -289,7 +313,7 @@ class Client:
                         fname = temp[1]
                         threading.Thread(target=self.TCP_Threader, args=[fname, int(port)]).start()
                     if rsp[0] == "FILE":
-                        temp = rsp[1].split('', 1)
+                        temp = rsp[1].split('_', 1)
                         port = temp[0]
                         fname = temp[1]
                         threading.Thread(target=self.UDP_Threader, args=[fname, int(port)]).start()
@@ -309,7 +333,8 @@ class Client:
             # sending message regardless - protocol assurance should be done by controller!
             client_socket.send(message.encode())
         except OSError:
-            print("Something Went Wrong With Sending The Message")
+            self.set_response("Something Went Wrong With Sending The Message")
+            self.set_res_flag(True)
             return
 
     def run(self):

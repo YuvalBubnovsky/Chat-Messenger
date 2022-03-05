@@ -4,9 +4,9 @@ from tkinter.ttk import Labelframe
 import Controller
 
 
-# TODO: Add DC functions
-
 class Client_GUI:
+
+
 
     def __init__(self):
         self.root = Tk()
@@ -93,7 +93,6 @@ class Client_GUI:
         scrollbar.pack(side='left', fill='y')
         self.controller.set_chat_box(display_box)
 
-        # TODO: populate list properly and bind double click functions
         user_list = Listbox(chat_frame, height=10, selectmode=SINGLE)
         user_list.pack(side='right', padx=5)
         user_list.bind('<Double-1>', lambda event: self.controller.send_pm())
