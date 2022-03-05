@@ -4,6 +4,14 @@
 This messenger app is the final assignment in our Computer-Networking course, Ariel University, 2021.
 
 ## How To use
+1. navigate to backend using your cd command (pycharm terminal)
+2. now enter ```python Server.py``` and it should boot
+3. next you can launch the Client_GUI, pick any username and in address write ``` 127.0.0.1 ```
+
+- if you cannot open multiple edit your run configurations: </br>
+![image](https://user-images.githubusercontent.com/73063105/156900076-70a6ff2c-caf6-4a46-9694-29f36aded08a.png)
+- and make sure this box is checked: </br>
+![image](https://user-images.githubusercontent.com/73063105/156900109-c3d7144d-815b-4803-81aa-7701f832a429.png)
 
 ## Introduction:
 This is an exercise in networking and communications, therefore it is expected that if we are asked to write ac chat app it would be using sockets to communicate messages – rather than a standard library like we can see in web development nowadays, and in this exercise we had to learn to manage multiple connections on the same machine using threads, create a protocol language, and devise algorithms to transfer files in a dependable manner.
@@ -46,12 +54,16 @@ As for CC it only changes the window size, seeing as we are only sending packets
 
 ### GUI
 
-The design pattern behind our GUI is MVC (Model - View - Controller) where the Client-Server backend logic is the model, the Client_GUI class the the view and the controller is the controller class. <br>
-The Client_GUI & Controller classes are designed as objects to simplify their relationship, where the Controller communicates with both the frontend/backend and also implements user input to the program, this MVC design allowed us to "seperate" the actual program logic from what the user sees.<br>
-We used Python's TKinter library for our GUI.<br>
-Upon program start, a TKinter window is created with an instance of a Controller inside, Same Controller has an instance of a Client within it, this design allows up to implement MVC, user input is performed on the GUI and transfered over to the controller, which assigns the correct function and executes.
+The design pattern our GUI is MVC (Model – view – Controller) where the Client-server backend logic is the model, the Client_GUI class is the view, and the controller is self-explanatory.</br></br>
+The Client_GUI & Controller classes are designed as objects to simplify their relationship, where the Controller communicates with both the frontend/backed and implements user input to the program, this MVC design allowed us to “separate” the actual program logic from what the user sees.</br></br>
+We used Python’s TKinter library for our GUI, and when it starts, a TKinter window is created with an instance of a Controller inside, the same Controller has an instance of a Client within it, this design allows us to implement MVC, user input is performed using the GUI and sent to the controller, which applies the relevant functions according to the input.
 
 ### Unit-testing
+Seeing as most if not all our code is just an assortment of different methods coming together, we set out to make sure we understand the methods we use and can reproduce them when needed, as such these tests don’t directly test any method, we built but rather test their foundations, like creating sockets and sending messages between them, or calculating checksum and using struct to alter packets. </br></br>
+This implies a strong foundation for our code and allows us to be sure that the more complex methods within are based on correct ways of working with these libraries.</br></br>
+For these ‘more complex’ methods we did not revise a test, seeing as it would require essentially writing the same method again, instead we tested it rigorously and often by hand.</br></br>
+for example, sending files over UDP is the biggest method we built, and we tested it by activating the method and seeing that we indeed got a correct file transfer.
+
 
 
 
