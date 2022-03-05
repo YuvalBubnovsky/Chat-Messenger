@@ -426,6 +426,7 @@ def Threader(connection: socket, address, name):
     """
     while running:
         try:
+            time.sleep(0.5)
             message = connection.recv(8192)
             message = message.decode()
             message = message.split('_', 1)

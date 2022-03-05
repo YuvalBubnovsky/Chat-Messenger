@@ -308,9 +308,6 @@ class Client:
 
         c, addr = con.accept()
 
-        location = os.path.realpath(os.getcwd())
-        location = os.path.join(location, "Files")
-
         self.set_response("Receiving Request File via TCP...")
         self.set_res_flag(True)
 
@@ -344,6 +341,7 @@ class Client:
                     if protocol == "USERS":
                         self.set_user_flag(True)
                         self.set_user_list(rsp)
+                        continue
                 except pickle.PickleError or pickle.UnpicklingError:
                     # if it is unsuccessful it will throw an error, and we will attempt to receive a text response
                     rsp = rsp.decode()

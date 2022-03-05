@@ -3,7 +3,7 @@ import time
 from tkinter import *
 from tkinter import messagebox
 
-from Server_Side import Client
+import src.Backend.Client as Client
 
 
 class Controller:
@@ -131,13 +131,14 @@ class Controller:
         self.set_connected(True)  # Need this flag for control
         self.update_state()
 
+        # sleep are needed for server to process messages!
         self.client.send_message(self.client.get_TCP_Socket(), "ALL_" + user_name + " Has Joined The Chat Room!")
-        time.sleep(0.3)
+        time.sleep(1)
         self.set_username(user_name)
         threading.Thread(target=self.write_chat, daemon=True).start()
-        time.sleep(0.3)
+        time.sleep(2)
         self.populate_user_list()
-        time.sleep(0.3)
+        time.sleep(1)
         self.populate_file_list()
 
         self.write_message("======================================")
@@ -188,7 +189,9 @@ class Controller:
         self.user_input.insert(0, send_to)
 
     def populate_user_list(self):
+        time.sleep(0.2)
         self.client.send_message(self.client.get_TCP_Socket(), "GETUSERS_")  # Get user list
+
 
     def populate_file_list(self):
         self.client.send_message(self.client.get_TCP_Socket(), "WF_")  # Get file list
